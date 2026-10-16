@@ -1,0 +1,708 @@
+[
+  {
+    "code": "ACES",
+    "name": "Aspirasi Hidup Indonesia Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ADHI",
+    "name": "Adhi Karya (Persero) Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "ADRO",
+    "name": "Adaro Energy Indonesia Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "AKRA",
+    "name": "AKR Corporindo Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "AMMN",
+    "name": "Amman Mineral Internasional Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "AMRT",
+    "name": "Sumber Alfaria Trijaya Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ANTM",
+    "name": "Aneka Tambang Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ASII",
+    "name": "Astra International Tbk.",
+    "sector": "Industrials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ASRI",
+    "name": "Alam Sutera Realty Tbk.",
+    "sector": "Properties & Real Estate",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "AUTO",
+    "name": "Astra Otoparts Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "AVIA",
+    "name": "Avia Avian Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BMSR",
+    "name": "Bintang Mitra Semestaraya Tbk",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "CUSTOM"
+    ]
+  },
+  {
+    "code": "BRIS",
+    "name": "Bank Syariah Indonesia Tbk.",
+    "sector": "Financials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BRMS",
+    "name": "Bumi Resources Minerals Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BRPT",
+    "name": "Barito Pacific Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BSDE",
+    "name": "Bumi Serpong Damai Tbk.",
+    "sector": "Properties & Real Estate",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BTPS",
+    "name": "Bank BTPN Syariah Tbk.",
+    "sector": "Financials",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BUKA",
+    "name": "Bukalapak.com Tbk.",
+    "sector": "Technology",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "BUMI",
+    "name": "Bumi Resources Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "CMRY",
+    "name": "Cisarua Mountain Dairy Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "CPIN",
+    "name": "Charoen Pokphand Indonesia Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "CTRA",
+    "name": "Ciputra Development Tbk.",
+    "sector": "Properties & Real Estate",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "DSNG",
+    "name": "Dharma Satya Nusantara Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "EMTK",
+    "name": "Elang Mahkota Teknologi Tbk.",
+    "sector": "Technology",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ENRG",
+    "name": "Energi Mega Persada Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ERAA",
+    "name": "Erajaya Swasembada Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ESIP",
+    "name": "Sinergi Inti Plastindo Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "ESSA",
+    "name": "Essa Industries Indonesia Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "EXCL",
+    "name": "XL Axiata Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "GOTO",
+    "name": "GoTo Gojek Tokopedia Tbk.",
+    "sector": "Technology",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "HEAL",
+    "name": "Medikaloka Hermina Tbk.",
+    "sector": "Healthcare",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "HRUM",
+    "name": "Harum Energy Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ICBP",
+    "name": "Indofood CBP Sukses Makmur Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "INCO",
+    "name": "Vale Indonesia Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "INDF",
+    "name": "Indofood Sukses Makmur Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "INKP",
+    "name": "Indah Kiat Pulp & Paper Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "INTP",
+    "name": "Indocement Tunggal Prakarsa Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ISAT",
+    "name": "Indosat Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "ITMG",
+    "name": "Indo Tambangraya Megah Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "JPFA",
+    "name": "Japfa Comfeed Indonesia Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "JSMR",
+    "name": "Jasa Marga (Persero) Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "KLBF",
+    "name": "Kalbe Farma Tbk.",
+    "sector": "Healthcare",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "LSIP",
+    "name": "PP London Sumatra Indonesia Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MAPA",
+    "name": "MAP Aktif Adiperkasa Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MAPI",
+    "name": "Mitra Adiperkasa Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MBMA",
+    "name": "Merdeka Battery Materials Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MDKA",
+    "name": "Merdeka Copper Gold Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MEDC",
+    "name": "Medco Energi Internasional Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MIDI",
+    "name": "Midi Utama Indonesia Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MIKA",
+    "name": "Mitra Keluarga Karyasehat Tbk.",
+    "sector": "Healthcare",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MPMX",
+    "name": "Mitra Pinasthika Mustika Tbk.",
+    "sector": "Industrials",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "MTEL",
+    "name": "Dayamitra Telekomunikasi Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "MYOR",
+    "name": "Mayora Indah Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "PGAS",
+    "name": "Perusahaan Gas Negara Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "PTBA",
+    "name": "Bukit Asam Tbk.",
+    "sector": "Energy",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "PTPP",
+    "name": "PP (Persero) Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "PWON",
+    "name": "Pakuwon Jati Tbk.",
+    "sector": "Properties & Real Estate",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "RAJA",
+    "name": "Rukun Raharja Tbk",
+    "sector": "Utilities",
+    "indices": [
+      "ISSI",
+      "CUSTOM"
+    ]
+  },
+  {
+    "code": "SCMA",
+    "name": "Surya Citra Media Tbk.",
+    "sector": "Consumer Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "SIDO",
+    "name": "Industri Jamu Dan Farmasi Sido Muncul Tbk.",
+    "sector": "Healthcare",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "SILO",
+    "name": "Siloam International Hospitals Tbk.",
+    "sector": "Healthcare",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "SIMP",
+    "name": "Salim Ivomas Pratama Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "SMGR",
+    "name": "Semen Indonesia (Persero) Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "SMRA",
+    "name": "Summarecon Agung Tbk.",
+    "sector": "Properties & Real Estate",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "SSMS",
+    "name": "Sawit Sumbermas Sarana Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "STAA",
+    "name": "Sumber Tani Agung Resources Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI"
+    ]
+  },
+  {
+    "code": "TAPG",
+    "name": "Triputra Agro Persada Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "TBIG",
+    "name": "Tower Bersama Infrastructure Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "TKIM",
+    "name": "Pabrik Kertas Tjiwi Kimia Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII70"
+    ]
+  },
+  {
+    "code": "TLKM",
+    "name": "Telkom Indonesia (Persero) Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "TOWR",
+    "name": "Sarana Menara Nusantara Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "TPIA",
+    "name": "Chandra Asri Pacific Tbk.",
+    "sector": "Basic Materials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "UNTR",
+    "name": "United Tractors Tbk.",
+    "sector": "Industrials",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "UNVR",
+    "name": "Unilever Indonesia Tbk.",
+    "sector": "Consumer Non-Cyclical",
+    "indices": [
+      "ISSI",
+      "JII",
+      "JII70"
+    ]
+  },
+  {
+    "code": "WIKA",
+    "name": "Wijaya Karya (Persero) Tbk.",
+    "sector": "Infrastructures",
+    "indices": [
+      "ISSI"
+    ]
+  }
+]

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Syariah Swing Radar Pro v1.0 - IDX</title>
+  <meta name="theme-color" content="#0e1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css?v=1.0.0">
+  <script>
+    // Force cache purge for older service worker caches
+    if ('caches' in window) {
+      caches.keys().then(function(keys) {
+        keys.forEach(function(key) {
+          if (key !== 'syariah-radar-v1.0.0') {
+            console.log('Purging legacy cache:', key);
+            caches.delete(key);
+          }
+        });
+      });
+    }
+  </script>
+</head>
+<body class="bg-[#0e1117] text-gray-100 font-sans antialiased min-h-screen pb-20">
+
+  <!-- FLOATING TOAST NOTIFICATION -->
+  <div id="toastNotification" class="fixed top-5 left-1/2 -translate-x-1/2 z-[100] hidden px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-xs shadow-2xl flex items-center gap-2 transition-all transform duration-300 border border-emerald-400/40">
+    <i class="fa-solid fa-circle-check text-sm text-emerald-200"></i>
+    <span id="toastText">Rencana trading berhasil disalin!</span>
+  </div>
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-40 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 px-4 py-3 shadow-md">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold shadow-inner">
+          <i class="fa-solid fa-shield-halved text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white leading-tight flex items-center gap-1.5">
+            Syariah Swing Radar Pro
+            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v1.0.0</span>
+          </h1>
+          <p class="text-[11px] text-gray-400">Teknikal • Bandarmologi • Fundamental Syariah</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button onclick="openStandaloneCalcModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm" title="Kalkulator Lot Sizing">
+          <i class="fa-solid fa-calculator text-emerald-400"></i>
+          <span>Kalkulator</span>
+        </button>
+        <button onclick="openAddStockModal()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Tambah Saham Kustom">
+          <i class="fa-solid fa-plus text-emerald-400"></i>
+          <span class="hidden sm:inline">Tambah</span>
+        </button>
+        <button onclick="openTelegramModal()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-blue-400 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Notifikasi Telegram">
+          <i class="fa-brands fa-telegram text-blue-400 text-sm"></i>
+          <span class="hidden sm:inline">Telegram</span>
+        </button>
+        <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow" title="Akses & Pasang di HP Android">
+          <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
+          <span class="hidden sm:inline">Pasang HP</span>
+        </button>
+        <button id="refreshBtn" onclick="fetchResults(true)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrows-rotate text-emerald-400" id="refreshIcon"></i>
+          <span class="hidden sm:inline">Scan</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-4xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- SUMMARY METRICS -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-3 shadow-sm">
+        <span class="text-[11px] text-gray-400 uppercase tracking-wider block">Total Saham Radar</span>
+        <span class="text-xl font-bold text-white" id="statScanned">-</span>
+        <span class="text-[10px] text-gray-500 block">JII & JII70 Terkurasi</span>
+      </div>
+      <div class="bg-[#161b22] border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-3 shadow-sm">
+        <span class="text-[11px] text-emerald-400 uppercase tracking-wider font-semibold block">🛡️ Paling Aman (Grade A+)</span>
+        <span class="text-xl font-bold text-emerald-400" id="statLowRisk">-</span>
+        <span class="text-[10px] text-emerald-500/80 block">Teknikal & Bandar Teruji</span>
+      </div>
+      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-3 shadow-sm">
+        <span class="text-[11px] text-blue-400 uppercase tracking-wider block">Akumulasi Bandar</span>
+        <span class="text-xl font-bold text-blue-400" id="statAccumulation">-</span>
+        <span class="text-[10px] text-gray-500 block">Smart Money Masuk</span>
+      </div>
+      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-3 shadow-sm">
+        <span class="text-[11px] text-amber-400 uppercase tracking-wider block">Total Sinyal Lolos</span>
+        <span class="text-xl font-bold text-amber-400" id="statCandidates">-</span>
+        <span class="text-[10px] text-gray-500 block">Anti-Pisau Jatuh</span>
+      </div>
+    </section>
+
+    <!-- SEARCH BAR -->
+    <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 shadow-sm">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-sm"></i>
+        <input type="text" id="searchInput" placeholder="Cari saham berdasarkan kode, emiten, atau sektor (contoh: AUTO, CPIN, SIDO, Adaro, Tambang)..." oninput="handleSearch()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg pl-9 pr-9 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition font-medium">
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTER TABS / PILLS (WRAPPING PREVENTS TRUNCATION) -->
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+      <button onclick="setFilter('WATCHLIST')" id="filter-WATCHLIST" class="filter-pill border-amber-500/40 text-amber-300 font-semibold flex items-center gap-1.5">
+        <i class="fa-solid fa-star text-amber-400"></i>
+        <span>Watchlist Saya (<span id="watchlistCount">0</span>)</span>
+      </button>
+      <button onclick="setFilter('ALL')" id="filter-ALL" class="filter-pill active">
+        Semua Kandidat
+      </button>
+      <button onclick="setFilter('LOW_RISK')" id="filter-LOW_RISK" class="filter-pill border-emerald-500/40 text-emerald-400 font-semibold">
+        🛡️ Paling Aman (Grade A+)
+      </button>
+      <button onclick="setFilter('BIG_ACCUMULATION')" id="filter-BIG_ACCUMULATION" class="filter-pill">
+        💰 Akumulasi Bandar
+      </button>
+      <button onclick="setFilter('JII')" id="filter-JII" class="filter-pill border-purple-500/30 text-purple-300">
+        👑 Bluechip (JII)
+      </button>
+      <button onclick="setFilter('TIGHT_SL')" id="filter-TIGHT_SL" class="filter-pill border-blue-500/30 text-blue-300">
+        🎯 SL Ketat (&le;4%)
+      </button>
+      <button onclick="setFilter('UPTREND_PULLBACK')" id="filter-UPTREND_PULLBACK" class="filter-pill">
+        📈 Uptrend Pullback
+      </button>
+      <button onclick="setFilter('STAGE2_BREAKOUT')" id="filter-STAGE2_BREAKOUT" class="filter-pill">
+        🚀 Stage 2 Breakout
+      </button>
+      <button onclick="setFilter('RS_LEADER')" id="filter-RS_LEADER" class="filter-pill">
+        👑 Market Leader (>MA200)
+      </button>
+      <button onclick="setFilter('OVERSOLD_REBOUND')" id="filter-OVERSOLD_REBOUND" class="filter-pill">
+        ⚡ Oversold Rebound
+      </button>
+    </div>
+
+    <!-- STOCK CARDS CONTAINER -->
+    <div id="stockList" class="space-y-3">
+      <!-- Loading Skeleton -->
+      <div class="text-center py-12 text-gray-400">
+        <i class="fa-solid fa-spinner fa-spin text-2xl text-emerald-400 mb-3"></i>
+        <p class="text-sm">Menganalisis 3 Pilar: Teknikal, Bandarmologi & Fundamental...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- APP FOOTER -->
+  <footer class="max-w-4xl mx-auto px-4 py-8 text-center text-xs text-gray-400 border-t border-gray-800/80 mt-8 space-y-2.5">
+    <div class="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-sm">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>Syariah Swing Radar Pro • Versi 1.0 (v1.0.0)</span>
+    </div>
+    <p class="text-[11px] text-gray-400 max-w-md mx-auto">
+      Screener Swing Saham Syariah BEI (ISSI, JII, JII70) dengan Validasi 3-Pilar (Teknikal, Bandarmologi, Fundamental) & Proteksi Risiko Anti-Falling Knife.
+    </p>
+    <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-gray-400 pt-1">
+      <button onclick="handleInstallAppClick()" class="hover:text-emerald-400 underline flex items-center gap-1 transition">
+        <i class="fa-solid fa-mobile-screen"></i> Cara Pasang di HP
+      </button>
+      <span>•</span>
+      <button onclick="openTelegramModal()" class="hover:text-blue-400 underline flex items-center gap-1 transition">
+        <i class="fa-brands fa-telegram"></i> Bot Telegram
+      </button>
+      <span>•</span>
+      <button onclick="openStandaloneCalcModal()" class="hover:text-emerald-400 underline flex items-center gap-1 transition">
+        <i class="fa-solid fa-calculator"></i> Kalkulator Lot
+      </button>
+    </div>
+  </footer>
+
+  <!-- STANDALONE KALKULATOR LOT SIZING MODAL -->
+  <div id="standaloneCalcModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-[#161b22] border border-gray-800 w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 p-4 flex items-center justify-between z-10">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center border border-emerald-500/30 text-lg">
+            <i class="fa-solid fa-calculator"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              Kalkulator Lot Sizing & Money Management
+            </h3>
+            <p class="text-xs text-gray-400">Hitung otomatis ukuran lot agar risiko terkunci aman</p>
+          </div>
+        </div>
+        <button onclick="closeStandaloneCalcModal()" class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-4 text-xs">
+        <!-- QUICK STOCK SELECTOR -->
+        <div class="bg-[#0e1117] p-3 rounded-xl border border-gray-800 space-y-2">
+          <label class="text-[11px] text-emerald-400 font-semibold block flex items-center gap-1.5">
+            <i class="fa-solid fa-list-check"></i>
+            Pilih dari Saham Radar (Otomatis Isi Entry & SL):
+          </label>
+          <select id="calcStockSelector" onchange="handleStockSelection(this.value)" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500">
+            <option value="">-- Pilih Saham atau Ketik Manual di Bawah --</option>
+          </select>
+        </div>
+
+        <!-- INPUT FIELDS -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-gray-300 block mb-1 font-medium">Harga Beli / Entry (Rp):</label>
+            <input type="number" id="scEntry" placeholder="Contoh: 3110" oninput="runStandaloneCalc()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-red-400 block mb-1 font-medium">Harga Stop Loss (Rp):</label>
+            <input type="number" id="scStopLoss" placeholder="Contoh: 2890" oninput="runStandaloneCalc()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label class="text-gray-300 block mb-1 font-medium">Modal Portofolio Anda (Rp):</label>
+            <input type="number" id="scCapital" value="50000000" step="5000000" oninput="runStandaloneCalc()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-gray-300 block mb-1 font-medium">Toleransi Resiko per Trade:</label>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="setStandaloneRisk(1)" class="sc-risk-btn flex-1 py-2 bg-gray-800 text-[10px] rounded border border-gray-700 text-gray-300">1%</button>
+              <button type="button" onclick="setStandaloneRisk(2)" class="sc-risk-btn flex-1 py-2 bg-emerald-500/20 text-emerald-400 font-bold text-[10px] rounded border border-emerald-500">2%</button>
+              <button type="button" onclick="setStandaloneRisk(3)" class="sc-risk-btn flex-1 py-2 bg-gray-800 text-[10px] rounded border border-gray-700 text-gray-300">3%</button>
+              <input type="hidden" id="scRiskPct" value="2">
+            </div>
+          </div>
+        </div>
+
+        <!-- CALCULATION RESULTS CARD -->
+        <div class="bg-gradient-to-br from-[#161b22] to-[#11161d] border border-emerald-500/40 rounded-xl p-4 space-y-3 shadow-lg">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-shield-halved"></i>
+              Hasil Perhitungan Ukuran Posisi Aman
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">1 Lot = 100 Lembar</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center py-1">
+            <div class="border-r border-gray-800">
+              <span class="text-[10px] text-emerald-400 font-semibold block">Rekomendasi Beli</span>
+              <span id="scResultLots" class="text-xl font-extrabold text-white font-mono">0 Lot</span>
+              <span id="scResultShares" class="text-[10px] text-gray-400 block">(0 Lembar)</span>
+            </div>
+            <div class="border-r border-gray-800">
+              <span class="text-[10px] text-gray-400 block">Modal Dibutuhkan</span>
+              <span id="scResultAlloc" class="text-sm font-bold text-white font-mono">Rp 0</span>
+              <span id="scResultAllocPct" class="text-[10px] text-blue-400 block">(0% Portofolio)</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-red-400 block">Resiko Terkunci</span>
+              <span id="scResultMaxRisk" class="text-sm font-bold text-red-400 font-mono">Rp 0</span>
+              <span class="text-[10px] text-gray-500 block">Jika Kena Stop Loss</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 bg-[#0e1117] p-2.5 rounded-lg border border-gray-800 text-center text-[11px]">
+            <div>
+              <span class="text-gray-400 text-[10px] block">Estimasi Cuan TP1 (+1.5R)</span>
+              <span id="scResultProfitTP1" class="font-bold text-emerald-400 font-mono">+Rp 0</span>
+            </div>
+            <div>
+              <span class="text-gray-400 text-[10px] block">Estimasi Cuan TP2 (+2.5R)</span>
+              <span id="scResultProfitTP2" class="font-bold text-emerald-400 font-mono">+Rp 0</span>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-gray-400 bg-gray-800/40 p-2 rounded-lg flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-blue-400"></i>
+            <span id="scAdvice">Masukkan harga Entry dan Stop Loss untuk melihat ukuran posisi ideal.</span>
+          </div>
+
+          <button onclick="copyStandalonePlan()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition flex items-center justify-center gap-2 shadow-md">
+            <i class="fa-solid fa-copy"></i>
+            <span>Salin Rencana & Ukuran Lot (Siap Share ke WA / Catatan)</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADING PLAN & MULTI-PILLAR DETAIL MODAL -->
+  <div id="detailModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-[#161b22] border border-gray-800 w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 p-4 flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+          <div id="modalScoreBadge" class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex flex-col items-center justify-center border border-emerald-500/30 text-sm">
+            <span id="modalScoreVal" class="text-base leading-none">95</span>
+            <span class="text-[8px] uppercase tracking-tighter text-emerald-300 mt-0.5">Skor</span>
+          </div>
+          <div>
+            <h3 id="modalStockCode" class="text-lg font-bold text-white flex items-center gap-2">
+              AUTO
+              <span id="modalStockSector" class="text-xs font-normal text-gray-400 px-2 py-0.5 rounded bg-gray-800">Consumer Cyclical</span>
+            </h3>
+            <p id="modalStockName" class="text-xs text-gray-400">Astra Otoparts Tbk.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="modalWatchlistBtn" onclick="toggleModalWatchlist()" class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition" title="Simpan ke Watchlist">
+            <i id="modalWatchlistIcon" class="fa-regular fa-star text-sm"></i>
+          </button>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-4 text-xs">
+        <!-- 3-PILLAR SCORE BAR -->
+        <div class="grid grid-cols-3 gap-2 bg-[#0e1117] p-2.5 rounded-xl border border-gray-800 text-center">
+          <div>
+            <span class="text-[10px] text-gray-400 block">📊 Skor Teknikal</span>
+            <span id="modalTechScore" class="text-sm font-bold text-emerald-400">85/100</span>
+          </div>
+          <div class="border-x border-gray-800">
+            <span class="text-[10px] text-gray-400 block">🕵️ Skor Bandar</span>
+            <span id="modalBandarScore" class="text-sm font-bold text-blue-400">80/100</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-gray-400 block">🏛️ Fundamental</span>
+            <span id="modalFundScore" class="text-sm font-bold text-purple-400">85/100</span>
+          </div>
+        </div>
+
+        <!-- RISK LEVEL STATUS BAR -->
+        <div id="modalRiskBanner" class="p-3 rounded-xl border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i id="modalRiskIcon" class="fa-solid fa-shield-check text-lg"></i>
+            <div>
+              <span class="font-bold text-sm block" id="modalRiskTitle">Tingkat Risiko: Paling Aman (Grade A+)</span>
+              <span class="text-[11px] text-gray-300" id="modalRiskSubtitle">Memiliki konfirmasi pembalikan arah dan perlindungan SL ketat</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRADING PLAN (ENTRY, SL, TP) -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-bullseye text-emerald-400"></i>
+              Trading Plan & Target
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Risk : Reward = 1 : 2.5</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <div class="bg-gray-800/50 p-2.5 rounded-lg border border-gray-700/50">
+              <span class="text-[10px] text-gray-400 block mb-0.5">Area Beli (Entry)</span>
+              <span id="modalEntry" class="text-sm font-bold text-white">Rp -</span>
+            </div>
+            <div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
+              <span class="text-[10px] text-red-400 block mb-0.5">Stop Loss (Proteksi)</span>
+              <span id="modalSL" class="text-sm font-bold text-red-400">Rp -</span>
+              <span id="modalSLPct" class="text-[10px] text-red-400/80 block">(-0%)</span>
+            </div>
+            <div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20">
+              <span class="text-[10px] text-emerald-400 block mb-0.5">Target Profit 1</span>
+              <span id="modalTP1" class="text-sm font-bold text-emerald-400">Rp -</span>
+              <span id="modalTP1Pct" class="text-[10px] text-emerald-400/80 block">(+0%)</span>
+            </div>
+            <div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20">
+              <span class="text-[10px] text-emerald-400 block mb-0.5">Target Profit 2</span>
+              <span id="modalTP2" class="text-sm font-bold text-emerald-400">Rp -</span>
+              <span id="modalTP2Pct" class="text-[10px] text-emerald-400/80 block">(+0%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONEY MANAGEMENT & POSITION SIZE CALCULATOR INSIDE MODAL -->
+        <div class="bg-[#0e1117] border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-3.5 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <span class="font-semibold text-emerald-400 flex items-center gap-1.5 text-xs">
+              <i class="fa-solid fa-calculator"></i>
+              Kalkulator Lot Sizing Saham Ini
+            </span>
+            <span class="text-[10px] text-gray-400">Terkunci di Resiko</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-1">Modal Portofolio Anda (Rp)</label>
+              <input type="number" id="calcCapitalInput" value="50000000" step="5000000" oninput="updateLotCalculation()" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-1">Toleransi Resiko per Trade</label>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="setRiskPct(1)" class="risk-btn px-2 py-1.5 bg-gray-800 text-[10px] rounded border border-gray-700 hover:border-emerald-500 text-gray-300">1%</button>
+                <button type="button" onclick="setRiskPct(2)" class="risk-btn px-2 py-1.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500">2%</button>
+                <button type="button" onclick="setRiskPct(3)" class="risk-btn px-2 py-1.5 bg-gray-800 text-[10px] rounded border border-gray-700 hover:border-emerald-500 text-gray-300">3%</button>
+                <input type="hidden" id="calcRiskPct" value="2">
+              </div>
+            </div>
+          </div>
+
+          <!-- CALCULATION RESULT BOX -->
+          <div class="bg-[#161b22] border border-gray-800 rounded-xl p-3 grid grid-cols-3 gap-2 text-center">
+            <div class="border-r border-gray-800">
+              <span class="text-[10px] text-emerald-400 font-semibold block">Rekomendasi Beli</span>
+              <span id="calcLots" class="text-base font-bold text-white font-mono">0 Lot</span>
+              <span id="calcShares" class="text-[10px] text-gray-400 block">(0 Lembar)</span>
+            </div>
+            <div class="border-r border-gray-800">
+              <span class="text-[10px] text-gray-400 block">Modal Terpakai</span>
+              <span id="calcAllocated" class="text-sm font-bold text-white font-mono">Rp -</span>
+              <span id="calcAllocPct" class="text-[10px] text-blue-400 block">(0% Portofolio)</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-red-400 block">Resiko Maksimal</span>
+              <span id="calcMaxRisk" class="text-sm font-bold text-red-400 font-mono">Rp -</span>
+              <span class="text-[10px] text-gray-500 block">Jika Stop Loss</span>
+            </div>
+          </div>
+
+          <button onclick="copyCurrentModalPlan()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition flex items-center justify-center gap-2 shadow-md">
+            <i class="fa-solid fa-copy"></i>
+            <span>Salin Trading Plan Lengkap (Siap Share ke WA / Catatan)</span>
+          </button>
+        </div>
+
+        <!-- BANDARMOLOGI & FLOW SECTION -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-1.5">
+            <span class="font-semibold text-blue-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-user-secret"></i>
+              Analisis Bandarmologi & Smart Money
+            </span>
+            <span id="modalBandarBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              Akumulasi
+            </span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-gray-400 block">Modal Bandar (VWAP 20)</span>
+              <span id="modalVWAP" class="font-bold text-white">Rp -</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-gray-400 block">Dominasi Beli 5-Hari</span>
+              <span id="modalBuyVol" class="font-bold text-emerald-400">-%</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-gray-400 block">Money Flow (MFI)</span>
+              <span id="modalMFI" class="font-bold text-white">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FUNDAMENTAL SYARIAH CHECKLIST -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-1.5">
+            <span class="font-semibold text-purple-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-scale-balanced"></i>
+              Kesehatan Fundamental & Standar Syariah OJK
+            </span>
+            <span id="modalMarketCap" class="text-[10px] text-gray-400 font-mono">Big Cap</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-gray-400 block">Valuasi (PER)</span>
+              <span id="modalPER" class="font-bold text-white">-</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-gray-400 block">Price/Book (PBV)</span>
+              <span id="modalPBV" class="font-bold text-white">-</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-emerald-400 block">Profit (ROE)</span>
+              <span id="modalROE" class="font-bold text-white">-</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg">
+              <span class="text-[10px] text-amber-400 block">Utang Riba (DER)</span>
+              <span id="modalDER" class="font-bold text-white">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONFIRMATIONS LIST -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2">
+          <span class="font-semibold text-emerald-400 block mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check"></i>
+            Catatan Keamanan & Konfirmasi Reversal:
+          </span>
+          <ul id="modalSafety" class="space-y-1.5 text-gray-300 pl-1">
+            <!-- Filled via JS -->
+          </ul>
+        </div>
+
+        <!-- INTERACTIVE CHART -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-chart-line text-emerald-400"></i>
+              Grafik Harga & MA (Daily 60 Hari)
+            </span>
+            <span class="text-[10px] text-gray-400 font-mono">Candle Daily</span>
+          </div>
+          <div class="h-56 relative w-full">
+            <canvas id="stockChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TAMBAH SAHAM KUSTOM -->
+  <div id="addStockModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-circle-plus text-emerald-400"></i>
+          Tambah Saham Syariah ke Radar
+        </h3>
+        <button onclick="closeAddStockModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <label class="text-gray-300 block font-medium">Kode Saham (Ticker BEI):</label>
+        <div class="flex items-center gap-2">
+          <input type="text" id="newStockCode" placeholder="Contoh: RAJA, PBSA, HEAL" maxlength="6" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-emerald-500">
+          <button id="addStockBtn" onclick="submitAddStock()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg whitespace-nowrap transition flex items-center gap-1.5">
+            <span>Tambah</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-gray-400 mt-1">Sistem akan memvalidasi ke BEI via Yahoo Finance dan langsung menyertakannya dalam radar screening.</p>
+        <div id="addStockAlert" class="hidden p-2.5 rounded-lg text-xs mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PENGATURAN TELEGRAM -->
+  <div id="telegramModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-brands fa-telegram text-blue-400 text-lg"></i>
+          Pengaturan Notifikasi Telegram
+        </h3>
+        <button onclick="closeTelegramModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <p class="text-gray-400 text-[11px]">Dapatkan sinyal otomatis saham syariah Grade A+ langsung ke chat Telegram HP Anda setiap pukul 16:30 WIB.</p>
+        <div>
+          <label class="text-gray-300 block mb-1">Telegram Bot Token:</label>
+          <input type="text" id="tgBotToken" placeholder="Contoh: 123456789:ABCdefGhIJKlmNoPQRst" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="text-gray-300 block mb-1">Chat ID Telegram Anda:</label>
+          <input type="text" id="tgChatId" placeholder="Contoh: 987654321" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="flex items-center gap-2 pt-2">
+          <button onclick="saveTelegramConfig()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition text-xs">
+            Simpan Konfigurasi
+          </button>
+          <button onclick="testSendTelegramAlert()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-emerald-400 font-medium rounded-lg border border-gray-700 transition text-xs flex items-center gap-1">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Tes Kirim</span>
+          </button>
+        </div>
+        <div id="tgAlertMessage" class="hidden p-2.5 rounded-lg text-xs mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PANDUAN PASANG APLIKASI DI ANDROID (v1.0.0) -->
+  <div id="mobileAppModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center border border-emerald-500/30 text-base">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Pasang Aplikasi di HP Android</h3>
+            <p class="text-[11px] text-gray-400">Versi 1.0 (v1.0.0) • Standalone PWA</p>
+          </div>
+        </div>
+        <button onclick="closeMobileAppModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- QR CODE & URL BOX -->
+        <div class="bg-[#0e1117] p-4 rounded-xl border border-gray-800 text-center space-y-3">
+          <p class="text-gray-300 text-[11px] font-medium">Scan QR code dengan kamera HP Android atau buka link di bawah:</p>
+          <div class="flex justify-center">
+            <img id="mobileAppQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://127.0.0.1:8000" alt="QR Code HP" class="w-40 h-40 rounded-xl p-2 bg-white shadow-md transition-all">
+          </div>
+          <div class="flex items-center gap-1.5 bg-[#161b22] p-1.5 rounded-lg border border-gray-700">
+            <span id="mobileAppUrlText" class="flex-1 text-[11px] font-mono text-emerald-400 font-semibold truncate px-2 text-left">http://localhost:8000</span>
+            <button onclick="copyMobileUrl()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium flex items-center gap-1 transition whitespace-nowrap shadow-sm">
+              <i class="fa-solid fa-copy"></i>
+              <span>Salin</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 STEPS GUIDE -->
+        <div class="space-y-2 text-gray-300 text-[11px]">
+          <div class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px] border border-emerald-500/30">1</span>
+            <span>Pastikan HP & Komputer terhubung ke <b>jaringan Wi-Fi / Hotspot yang sama</b>.</span>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px] border border-emerald-500/30">2</span>
+            <span>Buka link di browser <b>Google Chrome</b> di HP Anda.</span>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px] border border-emerald-500/30">3</span>
+            <span>Ketuk tombol <b>"Pasang HP"</b> di kanan atas, atau buka menu Chrome (titik tiga ⋮) lalu pilih <b>"Tambahkan ke Layar Utama" / "Install Aplikasi"</b>.</span>
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-[11px] text-emerald-300 flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-emerald-400"></i>
+          <span>Aplikasi akan langsung muncul di beranda HP Anda dalam mode layar penuh (standalone) seperti aplikasi native dari Play Store.</span>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button id="directInstallMobileBtn" onclick="triggerDirectInstall()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg">
+            <i class="fa-solid fa-download"></i>
+            <span>Install Sekarang di HP</span>
+          </button>
+          <button onclick="closeMobileAppModal()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-xl text-xs border border-gray-700 transition">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=1.0.0"></script>
+</body>
+</html>

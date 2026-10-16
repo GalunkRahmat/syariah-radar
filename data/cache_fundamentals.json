@@ -1,0 +1,555 @@
+{
+  "ADRO": {
+    "pe": 6.51,
+    "pbv": 13812.5,
+    "roe": 12.34,
+    "der": 37.82,
+    "market_cap": 63649091682304,
+    "market_cap_str": "Rp 63.6 T",
+    "div_yield": 961.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Baik (ROE 12.34%)",
+      "Kesehatan Utang Prima (DER 37.82%: Sangat Aman Syariah)"
+    ]
+  },
+  "ANTM": {
+    "pe": 6.88,
+    "pbv": 1.64,
+    "roe": 26.83,
+    "der": 15.6,
+    "market_cap": 61278450089984,
+    "market_cap_str": "Rp 61.3 T",
+    "div_yield": 702.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 26.83% > 15%)",
+      "Kesehatan Utang Prima (DER 15.6%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.64x)"
+    ]
+  },
+  "ASII": {
+    "pe": 5.66,
+    "pbv": 0.73,
+    "roe": 11.98,
+    "der": 41.12,
+    "market_cap": 167265068646400,
+    "market_cap_str": "Rp 167.3 T",
+    "div_yield": 816.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 90,
+    "reasons": [
+      "Profitabilitas Baik (ROE 11.98%)",
+      "Kesehatan Utang Prima (DER 41.12%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.73x)"
+    ]
+  },
+  "AUTO": {
+    "pe": 6.21,
+    "pbv": 0.94,
+    "roe": 15.29,
+    "der": 3.43,
+    "market_cap": 14989369802752,
+    "market_cap_str": "Rp 15.0 T",
+    "div_yield": 735.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 100,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 15.29% > 15%)",
+      "Kesehatan Utang Prima (DER 3.43%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.94x)"
+    ]
+  },
+  "BRMS": {
+    "pe": 99.15,
+    "pbv": 52000.0,
+    "roe": 3.98,
+    "der": 28.08,
+    "market_cap": 66354929467392,
+    "market_cap_str": "Rp 66.4 T",
+    "div_yield": null,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 60,
+    "reasons": [
+      "Profitabilitas Rendah (ROE 3.98%)",
+      "Kesehatan Utang Prima (DER 28.08%: Sangat Aman Syariah)"
+    ]
+  },
+  "BRPT": {
+    "pe": 47.92,
+    "pbv": 46538.46,
+    "roe": 6.46,
+    "der": 133.06,
+    "market_cap": 113391213477888,
+    "market_cap_str": "Rp 113.4 T",
+    "div_yield": 11.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 45,
+    "reasons": [
+      "Rasio Utang Perlu Diperhatikan (DER 133.06%)"
+    ]
+  },
+  "BUMI": {
+    "pe": 24.23,
+    "pbv": 33500.0,
+    "roe": 5.42,
+    "der": 24.84,
+    "market_cap": 49758945148928,
+    "market_cap_str": "Rp 49.8 T",
+    "div_yield": null,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 70,
+    "reasons": [
+      "Kesehatan Utang Prima (DER 24.84%: Sangat Aman Syariah)"
+    ]
+  },
+  "CPIN": {
+    "pe": 5.73,
+    "pbv": 1.2,
+    "roe": 22.79,
+    "der": 28.21,
+    "market_cap": 41978880327680,
+    "market_cap_str": "Rp 42.0 T",
+    "div_yield": 612.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 22.79% > 15%)",
+      "Kesehatan Utang Prima (DER 28.21%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.2x)"
+    ]
+  },
+  "EMTK": {
+    "pe": 9.09,
+    "pbv": 0.56,
+    "roe": 7.58,
+    "der": 6.3,
+    "market_cap": 20434957369344,
+    "market_cap_str": "Rp 20.4 T",
+    "div_yield": 260.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 80,
+    "reasons": [
+      "Kesehatan Utang Prima (DER 6.3%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.56x)"
+    ]
+  },
+  "ENRG": {
+    "pe": 21.33,
+    "pbv": 24444.44,
+    "roe": 12.79,
+    "der": 56.58,
+    "market_cap": 31397439864832,
+    "market_cap_str": "Rp 31.4 T",
+    "div_yield": null,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 70,
+    "reasons": [
+      "Profitabilitas Baik (ROE 12.79%)",
+      "Rasio Utang Terkendali (DER 56.58%)"
+    ]
+  },
+  "ERAA": {
+    "pe": 5.87,
+    "pbv": 0.87,
+    "roe": 15.51,
+    "der": 72.92,
+    "market_cap": 8168245559296,
+    "market_cap_str": "Rp 8.2 T",
+    "div_yield": 406.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 15.51% > 15%)",
+      "Rasio Utang Terkendali (DER 72.92%)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.87x)"
+    ]
+  },
+  "ESSA": {
+    "pe": 8.74,
+    "pbv": 19040.0,
+    "roe": 14.06,
+    "der": 0.02,
+    "market_cap": 8200039956480,
+    "market_cap_str": "Rp 8.2 T",
+    "div_yield": 929.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 75,
+    "reasons": [
+      "Profitabilitas Baik (ROE 14.06%)",
+      "Kesehatan Utang Prima (DER 0.02%: Sangat Aman Syariah)"
+    ]
+  },
+  "EXCL": {
+    "pe": null,
+    "pbv": 1.14,
+    "roe": -13.44,
+    "der": 204.32,
+    "market_cap": 33032752857088,
+    "market_cap_str": "Rp 33.0 T",
+    "div_yield": 746.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 40,
+    "reasons": [
+      "Profitabilitas Rendah (ROE -13.44%)",
+      "Rasio Utang Perlu Diperhatikan (DER 204.32%)",
+      "Valuasi Wajar (PBV 1.14x)"
+    ]
+  },
+  "GOTO": {
+    "pe": null,
+    "pbv": 0.82,
+    "roe": -1.16,
+    "der": 28.37,
+    "market_cap": 26652310503424,
+    "market_cap_str": "Rp 26.7 T",
+    "div_yield": null,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 70,
+    "reasons": [
+      "Profitabilitas Rendah (ROE -1.16%)",
+      "Kesehatan Utang Prima (DER 28.37%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.82x)"
+    ]
+  },
+  "ICBP": {
+    "pe": 9.95,
+    "pbv": 1.39,
+    "roe": 12.55,
+    "der": 66.65,
+    "market_cap": 73470020943872,
+    "market_cap_str": "Rp 73.5 T",
+    "div_yield": 381.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 75,
+    "reasons": [
+      "Profitabilitas Baik (ROE 12.55%)",
+      "Rasio Utang Terkendali (DER 66.65%)",
+      "Valuasi Wajar (PBV 1.39x)"
+    ]
+  },
+  "INCO": {
+    "pe": 13.91,
+    "pbv": 12825.28,
+    "roe": 5.58,
+    "der": 0.06,
+    "market_cap": 36362254286848,
+    "market_cap_str": "Rp 36.4 T",
+    "div_yield": 192.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 70,
+    "reasons": [
+      "Kesehatan Utang Prima (DER 0.06%: Sangat Aman Syariah)"
+    ]
+  },
+  "ISAT": {
+    "pe": 7.56,
+    "pbv": 1.53,
+    "roe": 20.24,
+    "der": 176.38,
+    "market_cap": 56600173740032,
+    "market_cap_str": "Rp 56.6 T",
+    "div_yield": 539.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 70,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 20.24% > 15%)",
+      "Rasio Utang Perlu Diperhatikan (DER 176.38%)",
+      "Valuasi Wajar (PBV 1.53x)"
+    ]
+  },
+  "ITMG": {
+    "pe": 7.18,
+    "pbv": 13348.81,
+    "roe": 11.12,
+    "der": 5.2,
+    "market_cap": 25642678616064,
+    "market_cap_str": "Rp 25.6 T",
+    "div_yield": 684.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Baik (ROE 11.12%)",
+      "Kesehatan Utang Prima (DER 5.2%: Sangat Aman Syariah)"
+    ]
+  },
+  "LSIP": {
+    "pe": 4.23,
+    "pbv": 0.61,
+    "roe": 15.2,
+    "der": null,
+    "market_cap": 8729553534976,
+    "market_cap_str": "Rp 8.7 T",
+    "div_yield": 561.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 15.2% > 15%)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.61x)"
+    ]
+  },
+  "MAPA": {
+    "pe": 7.72,
+    "pbv": 1.55,
+    "roe": 21.91,
+    "der": 26.27,
+    "market_cap": 14822079987712,
+    "market_cap_str": "Rp 14.8 T",
+    "div_yield": 66.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 21.91% > 15%)",
+      "Kesehatan Utang Prima (DER 26.27%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.55x)"
+    ]
+  },
+  "MBMA": {
+    "pe": 30.78,
+    "pbv": 24933.33,
+    "roe": 9.24,
+    "der": 52.77,
+    "market_cap": 40164839653376,
+    "market_cap_str": "Rp 40.2 T",
+    "div_yield": null,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 60,
+    "reasons": [
+      "Rasio Utang Terkendali (DER 52.77%)"
+    ]
+  },
+  "MDKA": {
+    "pe": 63.76,
+    "pbv": 67500.0,
+    "roe": 7.47,
+    "der": 86.03,
+    "market_cap": 59339733729280,
+    "market_cap_str": "Rp 59.3 T",
+    "div_yield": 43.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 60,
+    "reasons": [
+      "Rasio Utang Terkendali (DER 86.03%)"
+    ]
+  },
+  "MPMX": {
+    "pe": 7.99,
+    "pbv": 0.77,
+    "roe": 9.1,
+    "der": 0.92,
+    "market_cap": 4270328119296,
+    "market_cap_str": "Rp 4.3 T",
+    "div_yield": 1667.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 75,
+    "reasons": [
+      "Kesehatan Utang Prima (DER 0.92%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.77x)"
+    ]
+  },
+  "PTBA": {
+    "pe": 6.8,
+    "pbv": 1.28,
+    "roe": 21.11,
+    "der": 11.78,
+    "market_cap": 32240201367552,
+    "market_cap_str": "Rp 32.2 T",
+    "div_yield": 357.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 21.11% > 15%)",
+      "Kesehatan Utang Prima (DER 11.78%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.28x)"
+    ]
+  },
+  "SCMA": {
+    "pe": 9.52,
+    "pbv": 1.49,
+    "roe": 13.56,
+    "der": 10.28,
+    "market_cap": 9407575359488,
+    "market_cap_str": "Rp 9.4 T",
+    "div_yield": 1214.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Baik (ROE 13.56%)",
+      "Kesehatan Utang Prima (DER 10.28%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.49x)"
+    ]
+  },
+  "SIDO": {
+    "pe": 10.09,
+    "pbv": 3.2,
+    "roe": 30.4,
+    "der": 0.05,
+    "market_cap": 9595875491840,
+    "market_cap_str": "Rp 9.6 T",
+    "div_yield": 1045.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 30.4% > 15%)",
+      "Kesehatan Utang Prima (DER 0.05%: Sangat Aman Syariah)"
+    ]
+  },
+  "SIMP": {
+    "pe": 3.46,
+    "pbv": 0.36,
+    "roe": 11.79,
+    "der": 34.03,
+    "market_cap": 7502634156032,
+    "market_cap_str": "Rp 7.5 T",
+    "div_yield": 468.0,
+    "cap_category": "Mid Cap (Rp 2T - 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Baik (ROE 11.79%)",
+      "Kesehatan Utang Prima (DER 34.03%: Sangat Aman Syariah)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.36x)"
+    ]
+  },
+  "TAPG": {
+    "pe": 8.66,
+    "pbv": 3.06,
+    "roe": 35.97,
+    "der": 9.04,
+    "market_cap": 35039733612544,
+    "market_cap_str": "Rp 35.0 T",
+    "div_yield": 995.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 90,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 35.97% > 15%)",
+      "Kesehatan Utang Prima (DER 9.04%: Sangat Aman Syariah)"
+    ]
+  },
+  "TKIM": {
+    "pe": 2.54,
+    "pbv": 5868.09,
+    "roe": 14.71,
+    "der": 23.33,
+    "market_cap": 18835002359808,
+    "market_cap_str": "Rp 18.8 T",
+    "div_yield": 42.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Baik (ROE 14.71%)",
+      "Kesehatan Utang Prima (DER 23.33%: Sangat Aman Syariah)"
+    ]
+  },
+  "TLKM": {
+    "pe": 10.98,
+    "pbv": 1.58,
+    "roe": 17.68,
+    "der": 59.98,
+    "market_cap": 187303775436800,
+    "market_cap_str": "Rp 187.3 T",
+    "div_yield": 1001.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 17.68% > 15%)",
+      "Rasio Utang Terkendali (DER 59.98%)",
+      "Valuasi Wajar (PBV 1.58x)"
+    ]
+  },
+  "TPIA": {
+    "pe": 105.98,
+    "pbv": 26195.65,
+    "roe": 3.92,
+    "der": 119.07,
+    "market_cap": 104189715808256,
+    "market_cap_str": "Rp 104.2 T",
+    "div_yield": 43.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 35,
+    "reasons": [
+      "Profitabilitas Rendah (ROE 3.92%)",
+      "Rasio Utang Perlu Diperhatikan (DER 119.07%)"
+    ]
+  },
+  "RAJA": {
+    "pe": 15.87,
+    "pbv": 49000.0,
+    "roe": 19.9,
+    "der": 112.73,
+    "market_cap": 10356352090112,
+    "market_cap_str": "Rp 10.4 T",
+    "div_yield": 139.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 65,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 19.9% > 15%)",
+      "Rasio Utang Perlu Diperhatikan (DER 112.73%)"
+    ]
+  },
+  "AKRA": {
+    "pe": 9.08,
+    "pbv": 1.91,
+    "roe": 19.52,
+    "der": 33.33,
+    "market_cap": 24749711294464,
+    "market_cap_str": "Rp 24.7 T",
+    "div_yield": 680.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 19.52% > 15%)",
+      "Kesehatan Utang Prima (DER 33.33%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.91x)"
+    ]
+  },
+  "DSNG": {
+    "pe": 7.15,
+    "pbv": 1.15,
+    "roe": 16.75,
+    "der": 28.31,
+    "market_cap": 13779795443712,
+    "market_cap_str": "Rp 13.8 T",
+    "div_yield": 321.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 16.75% > 15%)",
+      "Kesehatan Utang Prima (DER 28.31%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.15x)"
+    ]
+  },
+  "INDF": {
+    "pe": 6.08,
+    "pbv": 0.76,
+    "roe": 12.14,
+    "der": 63.79,
+    "market_cap": 58170324025344,
+    "market_cap_str": "Rp 58.2 T",
+    "div_yield": 417.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 80,
+    "reasons": [
+      "Profitabilitas Baik (ROE 12.14%)",
+      "Rasio Utang Terkendali (DER 63.79%)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.76x)"
+    ]
+  },
+  "MAPI": {
+    "pe": 8.86,
+    "pbv": 1.43,
+    "roe": 17.61,
+    "der": 47.51,
+    "market_cap": 21912000397312,
+    "market_cap_str": "Rp 21.9 T",
+    "div_yield": 67.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 17.61% > 15%)",
+      "Kesehatan Utang Prima (DER 47.51%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 1.43x)"
+    ]
+  }
+}
