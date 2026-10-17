@@ -1,3 +1,13 @@
+---
+title: Syariah Swing Radar Pro
+emoji: 📈
+colorFrom: green
+colorTo: emerald
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Syariah Swing Radar Pro v1.0.0 - IDX (ISSI / JII / JII70)
 
 Aplikasi screener otomatis komprehensif untuk saham-saham syariah Bursa Efek Indonesia (BEI) berbasis **3 Pilar Analisis & Manajemen Risiko**:
