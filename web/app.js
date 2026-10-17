@@ -11,8 +11,73 @@ let selectedHistoryDate = '';
 let historyDatesList = [];
 
 // -------------------------------------------------------------
-// USER AUTHENTICATION & ACCESS CONTROL
+// THEME MANAGEMENT (DARK MODE & LIGHT / WHITE MODE)
 // -------------------------------------------------------------
+function applyTheme(theme) {
+  const isLight = (theme === 'light');
+  if (isLight) {
+    document.documentElement.classList.add('light-theme');
+    if (document.body) document.body.classList.add('light-theme');
+  } else {
+    document.documentElement.classList.remove('light-theme');
+    if (document.body) document.body.classList.remove('light-theme');
+  }
+
+  // Update theme meta color
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute('content', isLight ? '#f6f8fa' : '#0e1117');
+
+  // Desktop Header Button
+  const desktopIcon = document.getElementById('themeToggleIcon');
+  const desktopText = document.getElementById('themeToggleText');
+  if (desktopIcon) {
+    desktopIcon.className = isLight ? 'fa-solid fa-moon text-blue-500 text-xs' : 'fa-solid fa-sun text-amber-400 text-xs';
+  }
+  if (desktopText) {
+    desktopText.innerText = isLight ? 'Gelap' : 'Terang';
+  }
+
+  // Mobile Header Button
+  const mobileIcon = document.getElementById('mobileThemeToggleIcon');
+  if (mobileIcon) {
+    mobileIcon.className = isLight ? 'fa-solid fa-moon text-xs text-blue-500' : 'fa-solid fa-sun text-xs text-amber-400';
+  }
+
+  // Login Card Button
+  const loginIcon = document.getElementById('loginThemeIcon');
+  if (loginIcon) {
+    loginIcon.className = isLight ? 'fa-solid fa-moon text-blue-500' : 'fa-solid fa-sun text-amber-400';
+  }
+
+  // Mobile Menu Sheet Item
+  const menuIcon = document.getElementById('mobileMenuThemeIcon');
+  const menuStatus = document.getElementById('mobileMenuThemeStatus');
+  if (menuIcon) {
+    menuIcon.className = isLight ? 'fa-solid fa-moon text-blue-500' : 'fa-solid fa-sun text-amber-400';
+  }
+  if (menuStatus) {
+    menuStatus.innerText = isLight ? 'Aktif: Mode Terang (Ketuk utk Gelap)' : 'Aktif: Mode Gelap (Ketuk utk Terang)';
+  }
+
+  // Reload Chart if stock detail modal is open
+  if (currentOpenStock && document.getElementById('stockDetailModal') && !document.getElementById('stockDetailModal').classList.contains('hidden')) {
+    loadStockChart(currentOpenStock.code);
+  }
+}
+
+function toggleTheme() {
+  const isCurrentlyLight = (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme')));
+  const newTheme = isCurrentlyLight ? 'dark' : 'light';
+  localStorage.setItem('syariah_theme', newTheme);
+  applyTheme(newTheme);
+  showToast(newTheme === 'light' ? '☀️ Mode Terang (White Mode) Aktif' : '🌙 Mode Gelap (Dark Mode) Aktif');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('syariah_theme') || 'dark';
+  applyTheme(saved);
+}
+
 // -------------------------------------------------------------
 // USER AUTHENTICATION & ACCESS CONTROL (RBAC & DEVICE RESTRICTION)
 // -------------------------------------------------------------
@@ -1609,17 +1674,31 @@ async function loadStockChart(code) {
         plugins: {
           legend: {
             position: 'top',
-            labels: { color: '#9ca3af', font: { size: 10 } }
+            labels: {
+              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#374151' : '#9ca3af',
+              font: { size: 10 }
+            }
           }
         },
         scales: {
           x: {
-            ticks: { color: '#6b7280', maxTicksLimit: 8, font: { size: 10 } },
-            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            ticks: {
+              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#4b5563' : '#6b7280',
+              maxTicksLimit: 8,
+              font: { size: 10 }
+            },
+            grid: {
+              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)'
+            }
           },
           y: {
-            ticks: { color: '#6b7280', font: { size: 10 } },
-            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            ticks: {
+              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#4b5563' : '#6b7280',
+              font: { size: 10 }
+            },
+            grid: {
+              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)'
+            }
           }
         }
       }
@@ -1936,7 +2015,9 @@ async function deleteUserAccount(username) {
 }
 
 // Initial check on page load
+initTheme();
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   updateWatchlistCounter();
   checkAuthStatus();
 });
