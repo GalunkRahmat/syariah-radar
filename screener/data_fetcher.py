@@ -15,7 +15,10 @@ import yfinance as yf
 from screener.indicators import enrich_with_indicators
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CACHE_DIR = PROJECT_ROOT / "data" / "cache"
+if os.environ.get("VERCEL"):
+    CACHE_DIR = Path("/tmp/data/cache")
+else:
+    CACHE_DIR = PROJECT_ROOT / "data" / "cache"
 STOCKS_FILE = PROJECT_ROOT / "data" / "sharia_stocks.json"
 
 

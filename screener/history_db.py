@@ -4,6 +4,8 @@ Stores daily screening snapshots in SQLite for trend/behavior analysis and expor
 """
 
 import io
+import os
+import shutil
 import json
 import sqlite3
 from datetime import datetime
@@ -15,12 +17,21 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+if os.environ.get("VERCEL"):
+    DATA_DIR = Path("/tmp/data")
+else:
+    DATA_DIR = PROJECT_ROOT / "data"
 DB_FILE = DATA_DIR / "screening_history.db"
 
 
 def get_db_connection() -> sqlite3.Connection:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    seed_db = PROJECT_ROOT / "data" / "screening_history.db"
+    if os.environ.get("VERCEL") and not DB_FILE.exists() and seed_db.exists():
+        try:
+            shutil.copy2(seed_db, DB_FILE)
+        except Exception:
+            pass
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     return conn

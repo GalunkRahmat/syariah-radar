@@ -8,11 +8,15 @@ import time
 import json
 import secrets
 import hashlib
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+if os.environ.get("VERCEL"):
+    DATA_DIR = Path("/tmp/data")
+else:
+    DATA_DIR = PROJECT_ROOT / "data"
 USERS_FILE = DATA_DIR / "users.json"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
 
@@ -30,6 +34,12 @@ def hash_password(password: str, salt: Optional[str] = None) -> tuple[str, str]:
 def load_users() -> Dict[str, Any]:
     """Loads users database from disk or initializes default user Galunk."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    seed_users = PROJECT_ROOT / "data" / "users.json"
+    if os.environ.get("VERCEL") and not USERS_FILE.exists() and seed_users.exists():
+        try:
+            shutil.copy2(seed_users, USERS_FILE)
+        except Exception:
+            pass
     if USERS_FILE.exists():
         try:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
