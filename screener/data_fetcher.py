@@ -14,8 +14,9 @@ import yfinance as yf
 
 from screener.indicators import enrich_with_indicators
 
-CACHE_DIR = Path("data/cache")
-STOCKS_FILE = Path("data/sharia_stocks.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CACHE_DIR = PROJECT_ROOT / "data" / "cache"
+STOCKS_FILE = PROJECT_ROOT / "data" / "sharia_stocks.json"
 
 
 def get_latest_trading_date() -> date:

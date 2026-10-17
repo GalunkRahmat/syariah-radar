@@ -56,9 +56,10 @@ async def add_no_cache_headers(request: Request, call_next):
         response.headers["Expires"] = "0"
     return response
 
-WEB_DIR = Path("web")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+WEB_DIR = PROJECT_ROOT / "web"
 if WEB_DIR.exists():
-    app.mount("/static", StaticFiles(directory="web"), name="static")
+    app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
 # PWA Static Files

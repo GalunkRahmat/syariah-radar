@@ -14,7 +14,8 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-DATA_DIR = Path("data")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
 DB_FILE = DATA_DIR / "screening_history.db"
 
 

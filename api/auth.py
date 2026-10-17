@@ -11,7 +11,8 @@ import hashlib
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-DATA_DIR = Path("data")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
 USERS_FILE = DATA_DIR / "users.json"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
 

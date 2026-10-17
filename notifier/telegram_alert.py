@@ -12,7 +12,8 @@ import requests
 from screener.data_fetcher import fetch_all_sharia_data
 from screener.engine import run_screener
 
-CONFIG_FILE = Path("data/telegram_config.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = PROJECT_ROOT / "data" / "telegram_config.json"
 
 
 def load_telegram_config() -> Dict[str, Any]:
