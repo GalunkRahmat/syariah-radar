@@ -2,7 +2,7 @@
 title: Syariah Swing Radar Pro
 emoji: 📈
 colorFrom: green
-colorTo: emerald
+colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
