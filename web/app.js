@@ -162,6 +162,16 @@ function updateUserBadge(username, role = 'user') {
 function applyRolePermissions(role) {
   const isAdmin = (role === 'admin');
 
+  // Desktop admin dropdown container: only visible for admin
+  const adminMenuContainer = document.getElementById('adminMenuContainer');
+  if (adminMenuContainer) {
+    if (isAdmin) {
+      adminMenuContainer.classList.remove('hidden');
+    } else {
+      adminMenuContainer.classList.add('hidden');
+    }
+  }
+
   // Desktop user management button: only visible for admin
   const userMgmtBtn = document.getElementById('adminUserMgmtBtn');
   if (userMgmtBtn) {
@@ -177,7 +187,7 @@ function applyRolePermissions(role) {
   // Admin-only elements (Excel export buttons, Telegram config, Tambah Saham)
   const adminElements = document.querySelectorAll('.admin-only');
   adminElements.forEach(el => {
-    if (el.id === 'adminUserMgmtBtn') return; // Handled separately
+    if (el.id === 'adminUserMgmtBtn' || el.id === 'adminMenuContainer') return; // Handled separately
     if (isAdmin) {
       el.classList.remove('hidden');
     } else {
@@ -195,6 +205,28 @@ function applyRolePermissions(role) {
     }
   }
 }
+
+function toggleAdminDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('adminDropdownMenu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+  }
+}
+
+function closeAdminDropdown() {
+  const menu = document.getElementById('adminDropdownMenu');
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const container = document.getElementById('adminMenuContainer');
+  if (container && !container.contains(event.target)) {
+    closeAdminDropdown();
+  }
+});
 
 function togglePasswordVisibility() {
   const input = document.getElementById('loginPassword');
@@ -237,6 +269,9 @@ async function handleLoginSubmit(event) {
       localStorage.setItem('syariah_radar_user', data.username);
       localStorage.setItem('syariah_radar_role', data.role || 'user');
       hideLoginScreen();
+      sanitizeSearchInput();
+      setTimeout(sanitizeSearchInput, 100);
+      setTimeout(sanitizeSearchInput, 400);
       updateUserBadge(data.username, data.role);
       applyRolePermissions(data.role);
       showToast(`Selamat datang, ${data.username}!`);
@@ -293,6 +328,9 @@ async function checkAuthStatus() {
       const role = data.role || savedRole;
       localStorage.setItem('syariah_radar_role', role);
       hideLoginScreen();
+      sanitizeSearchInput();
+      setTimeout(sanitizeSearchInput, 100);
+      setTimeout(sanitizeSearchInput, 400);
       updateUserBadge(data.username || savedUser, role);
       applyRolePermissions(role);
       loadHistoryDates();
@@ -305,6 +343,9 @@ async function checkAuthStatus() {
     }
   } catch (e) {
     hideLoginScreen();
+    sanitizeSearchInput();
+    setTimeout(sanitizeSearchInput, 100);
+    setTimeout(sanitizeSearchInput, 400);
     updateUserBadge(savedUser, savedRole);
     applyRolePermissions(savedRole);
     loadHistoryDates();
@@ -596,15 +637,50 @@ function copyMobileUrl() {
 // -------------------------------------------------------------
 // SEARCH FILTERING
 // -------------------------------------------------------------
+function sanitizeSearchInput() {
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (!input) return;
+
+  const currentVal = input.value.trim().toLowerCase();
+  const savedUser = (localStorage.getItem('syariah_radar_user') || 'galunk').toLowerCase();
+
+  // If the search input got autofilled with username or 'galunk'
+  if (currentVal === savedUser || currentVal === 'galunk') {
+    input.value = '';
+    searchKeyword = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+  } else {
+    searchKeyword = currentVal;
+    if (currentVal.length > 0 && clearBtn) {
+      clearBtn.classList.remove('hidden');
+    }
+  }
+}
+
 function handleSearch() {
   const input = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearSearchBtn');
-  searchKeyword = input.value.trim().toLowerCase();
+  if (!input) return;
+
+  const val = input.value.trim().toLowerCase();
+  const savedUser = (localStorage.getItem('syariah_radar_user') || 'galunk').toLowerCase();
+
+  // Guard against browser autofilling credential username into screener search bar
+  if (val === savedUser || val === 'galunk') {
+    input.value = '';
+    searchKeyword = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    renderCandidates();
+    return;
+  }
+
+  searchKeyword = val;
 
   if (searchKeyword.length > 0) {
-    clearBtn.classList.remove('hidden');
+    if (clearBtn) clearBtn.classList.remove('hidden');
   } else {
-    clearBtn.classList.add('hidden');
+    if (clearBtn) clearBtn.classList.add('hidden');
   }
 
   renderCandidates();
@@ -613,9 +689,9 @@ function handleSearch() {
 function clearSearch() {
   const input = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearSearchBtn');
-  input.value = '';
+  if (input) input.value = '';
   searchKeyword = '';
-  clearBtn.classList.add('hidden');
+  if (clearBtn) clearBtn.classList.add('hidden');
   renderCandidates();
 }
 
@@ -881,7 +957,19 @@ function renderCandidates() {
     list = list.filter(c => c.setup_type === currentFilter);
   }
 
-  // 2. Filter by Search Keyword
+  // 2. Filter by Search Keyword (with autofill sanitization)
+  const searchEl = document.getElementById('searchInput');
+  if (searchEl) {
+    const v = searchEl.value.trim().toLowerCase();
+    const u = (localStorage.getItem('syariah_radar_user') || 'galunk').toLowerCase();
+    if (v === u || v === 'galunk') {
+      searchEl.value = '';
+      searchKeyword = '';
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.classList.add('hidden');
+    }
+  }
+
   if (searchKeyword.length > 0) {
     list = list.filter(c => 
       c.code.toLowerCase().includes(searchKeyword) ||
@@ -1067,9 +1155,9 @@ function renderCandidates() {
 
     // Trading Plan Strip (Stockbit Style)
     const plan = c.trading_plan || {};
-    const entryFormatted = plan.entry ? `Rp ${formatIDR(plan.entry)}` : `Rp ${formatIDR(c.price)}`;
-    const slFormatted = plan.stop_loss ? `Rp ${formatIDR(plan.stop_loss)}` : '-';
-    const tp1Formatted = plan.tp1 ? `Rp ${formatIDR(plan.tp1)}` : '-';
+    const entryFormatted = plan.entry ? formatIDR(plan.entry) : formatIDR(c.price);
+    const slFormatted = plan.stop_loss ? formatIDR(plan.stop_loss) : '-';
+    const tp1Formatted = plan.tp1 ? formatIDR(plan.tp1) : '-';
     const riskPctStr = plan.risk_pct ? `(-${plan.risk_pct}%)` : '';
     const tp1PctStr = plan.tp1_pct ? `(+${plan.tp1_pct}%)` : '';
 
@@ -2018,6 +2106,13 @@ async function deleteUserAccount(username) {
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  sanitizeSearchInput();
   updateWatchlistCounter();
   checkAuthStatus();
+});
+
+window.addEventListener('load', () => {
+  sanitizeSearchInput();
+  setTimeout(sanitizeSearchInput, 150);
+  setTimeout(sanitizeSearchInput, 500);
 });

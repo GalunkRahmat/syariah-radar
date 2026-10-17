@@ -16,7 +16,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.3.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.5.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -30,7 +30,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.3.0') {
+          if (key !== 'syariah-radar-v1.5.0') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -111,17 +111,18 @@
   </div>
 
   <!-- TOP APP BAR -->
-  <header class="sticky top-0 z-40 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 px-3 md:px-4 py-2.5 md:py-3 shadow-md">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-40 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 px-3 md:px-6 py-2.5 md:py-3 shadow-md">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
       <!-- LOGO & BRANDING (DESKTOP & MOBILE) -->
-      <div class="flex items-center space-x-2 md:space-x-2.5">
+      <div class="flex items-center space-x-2 md:space-x-2.5 shrink-0">
         <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold shadow-inner shrink-0">
           <i class="fa-solid fa-shield-halved text-base md:text-lg"></i>
         </div>
-        <div>
+        <div class="whitespace-nowrap">
           <h1 class="text-sm md:text-base font-bold text-white leading-tight flex items-center gap-1.5">
-            Syariah Radar Pro
-            <span class="text-[9px] md:text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v1.0.0</span>
+            <span>Syariah Radar Pro</span>
+            <span class="text-[9px] md:text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v1.0</span>
           </h1>
           <p class="text-[10px] md:text-[11px] text-gray-400 flex items-center gap-1.5">
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -132,41 +133,77 @@
 
       <!-- DESKTOP TOP ACTION BUTTONS (hidden on mobile, shown on md+) -->
       <div class="hidden md:flex items-center gap-1.5">
-        <button onclick="openStandaloneCalcModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm" title="Kalkulator Lot Sizing">
+        <!-- SCAN ACTION BUTTON -->
+        <button id="refreshBtn" onclick="fetchResults(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm" title="Scan Ulang Seluruh Pasar BEI">
+          <i class="fa-solid fa-arrows-rotate text-emerald-100" id="refreshIcon"></i>
+          <span>Scan Pasar</span>
+        </button>
+
+        <!-- KALKULATOR BUTTON -->
+        <button onclick="openStandaloneCalcModal()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Kalkulator Lot Sizing">
           <i class="fa-solid fa-calculator text-emerald-400"></i>
           <span>Kalkulator</span>
         </button>
-        <button id="adminUserMgmtBtn" onclick="openUserManagementModal()" class="admin-only hidden px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 items-center gap-1.5 transition shadow" title="Kelola Akun & Hak Akses Pengguna (Admin Only)">
-          <i class="fa-solid fa-users-gear text-emerald-400"></i>
-          <span>Kelola User</span>
-        </button>
-        <button id="addStockHeaderBtn" onclick="openAddStockModal()" class="admin-only px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Tambah Saham Kustom">
-          <i class="fa-solid fa-plus text-emerald-400"></i>
-          <span>Tambah</span>
-        </button>
-        <button id="telegramHeaderBtn" onclick="openTelegramModal()" class="admin-only px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-blue-400 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Notifikasi Telegram">
-          <i class="fa-brands fa-telegram text-blue-400 text-sm"></i>
-          <span>Telegram</span>
-        </button>
-        <button id="desktopHeaderExcelBtn" onclick="downloadExcelExport()" class="admin-only px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow" title="Unduh Hasil Screening ke File Excel (.xlsx)">
-          <i class="fa-solid fa-file-excel text-emerald-400"></i>
-          <span>Excel</span>
-        </button>
-        <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow" title="Akses & Pasang di HP Android">
+
+        <!-- ADMIN TOOLS DROPDOWN (ADMIN ONLY) -->
+        <div id="adminMenuContainer" class="admin-only relative hidden">
+          <button id="adminDropdownBtn" onclick="toggleAdminDropdown(event)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 flex items-center gap-1.5 transition shadow-sm" title="Menu Manajemen Administrator">
+            <i class="fa-solid fa-user-shield text-emerald-400"></i>
+            <span>Menu Admin</span>
+            <i class="fa-solid fa-chevron-down text-[9px] text-emerald-400 ml-0.5"></i>
+          </button>
+          
+          <div id="adminDropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
+            <button onclick="closeAdminDropdown(); openUserManagementModal();" class="w-full px-3 py-2 text-left text-gray-200 hover:text-white hover:bg-gray-800 flex items-center gap-2.5 transition">
+              <i class="fa-solid fa-users-gear text-emerald-400 w-4 text-center"></i>
+              <div>
+                <span class="font-semibold block leading-tight">Kelola Pengguna</span>
+                <span class="text-[10px] text-gray-400">Akun & kontrol 1 user 1 login</span>
+              </div>
+            </button>
+            <button onclick="closeAdminDropdown(); openAddStockModal();" class="w-full px-3 py-2 text-left text-gray-200 hover:text-white hover:bg-gray-800 flex items-center gap-2.5 transition">
+              <i class="fa-solid fa-circle-plus text-purple-400 w-4 text-center"></i>
+              <div>
+                <span class="font-semibold block leading-tight">Tambah Saham</span>
+                <span class="text-[10px] text-gray-400">Daftarkan ticker saham BEI baru</span>
+              </div>
+            </button>
+            <button onclick="closeAdminDropdown(); openTelegramModal();" class="w-full px-3 py-2 text-left text-gray-200 hover:text-white hover:bg-gray-800 flex items-center gap-2.5 transition">
+              <i class="fa-brands fa-telegram text-blue-400 w-4 text-center"></i>
+              <div>
+                <span class="font-semibold block leading-tight">Bot Telegram</span>
+                <span class="text-[10px] text-gray-400">Pengaturan sinyal otomatis 16:30</span>
+              </div>
+            </button>
+            <button onclick="closeAdminDropdown(); downloadExcelExport();" class="w-full px-3 py-2 text-left text-gray-200 hover:text-white hover:bg-gray-800 flex items-center gap-2.5 transition border-t border-gray-800 mt-1 pt-1.5">
+              <i class="fa-solid fa-file-excel text-emerald-400 w-4 text-center"></i>
+              <div>
+                <span class="font-semibold block leading-tight">Export Excel (.xlsx)</span>
+                <span class="text-[10px] text-gray-400">Laporan komprehensif 24 kolom</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- PASANG HP BUTTON -->
+        <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Akses & Pasang di HP Android">
           <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
           <span>Pasang HP</span>
         </button>
+
+        <!-- THEME TOGGLE BUTTON -->
         <button id="themeToggleBtn" onclick="toggleTheme()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-amber-400 text-xs font-semibold border border-gray-700 flex items-center gap-1.5 transition shadow-sm" title="Ganti Mode Tampilan (Terang / Gelap)">
           <i id="themeToggleIcon" class="fa-solid fa-sun text-amber-400 text-xs"></i>
           <span id="themeToggleText" class="text-gray-200">Terang</span>
         </button>
-        <button id="refreshBtn" onclick="fetchResults(true)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-arrows-rotate text-emerald-400" id="refreshIcon"></i>
-          <span>Scan</span>
-        </button>
-        <div id="userHeaderBadge" class="hidden flex items-center gap-1.5 pl-1 border-l border-gray-700">
-          <span class="text-[11px] text-gray-400"><b id="loggedInUserName" class="text-emerald-400">Galunk</b></span>
-          <button onclick="handleLogout()" class="px-2 py-1.5 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 text-xs font-medium border border-gray-700 transition" title="Keluar / Logout">
+
+        <!-- USER PROFILE BADGE & LOGOUT -->
+        <div id="userHeaderBadge" class="hidden flex items-center gap-1.5 pl-2 border-l border-gray-700">
+          <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-800/80 border border-gray-700/60 text-xs">
+            <i class="fa-solid fa-user-circle text-emerald-400"></i>
+            <span id="loggedInUserName" class="text-white font-semibold">Galunk</span>
+          </div>
+          <button onclick="handleLogout()" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center text-xs border border-gray-700 transition" title="Keluar / Logout">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
@@ -189,7 +226,7 @@
   </header>
 
   <!-- MAIN CONTAINER -->
-  <main class="max-w-4xl mx-auto px-3 md:px-4 py-3 md:py-4 space-y-3 md:space-y-4">
+  <main class="max-w-6xl mx-auto px-3 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
 
     <!-- SUMMARY METRICS -->
     <section class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-2.5">
@@ -239,8 +276,18 @@
     <div id="searchContainer" class="bg-[#161b22] border border-gray-800 rounded-xl p-2 md:p-2.5 shadow-sm">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-sm"></i>
-        <input type="text" id="searchInput" placeholder="Cari saham berdasarkan kode atau emiten (contoh: CPIN, AUTO, SIDO)..." oninput="handleSearch()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg pl-9 pr-9 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition font-medium">
-        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1">
+        <input 
+          type="search" 
+          id="searchInput" 
+          name="stock_screener_query_no_autofill"
+          autocomplete="off" 
+          autocorrect="off" 
+          autocapitalize="off" 
+          spellcheck="false" 
+          placeholder="Cari saham berdasarkan kode atau emiten (contoh: CPIN, AUTO, SIDO)..." 
+          oninput="handleSearch()" 
+          class="w-full bg-[#0e1117] border border-gray-700 rounded-lg pl-9 pr-9 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition font-medium">
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1" title="Hapus Pencarian">
           <i class="fa-solid fa-xmark text-xs"></i>
         </button>
       </div>
@@ -1070,6 +1117,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.4.0"></script>
+  <script src="/static/app.js?v=1.5.0"></script>
 </body>
 </html>
