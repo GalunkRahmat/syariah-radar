@@ -105,8 +105,14 @@ def save_screening_snapshot(market_date: str, candidates: List[Dict[str, Any]], 
             code = c.get("code")
             tp = c.get("trading_plan", {})
             bandar = c.get("bandarmologi", {})
-            fund = c.get("fundamentals", {})
-            tech = c.get("technical", {})
+            fund = c.get("fundamental") or c.get("fundamentals") or {}
+
+            close_price = float(c.get("price") or c.get("close") or tp.get("entry", 0.0))
+            rsi_val = float(c.get("rsi", 50.0))
+            mfi_val = float(c.get("mfi", 50.0))
+            vol_ratio_val = float(c.get("vol_ratio") or bandar.get("vol_ratio", 1.0))
+            der_val = float(fund.get("der", 0.0) or 0.0)
+            roe_val = float(fund.get("roe", 0.0) or 0.0)
 
             cursor.execute("""
                 INSERT INTO candidate_history (
@@ -141,20 +147,20 @@ def save_screening_snapshot(market_date: str, candidates: List[Dict[str, Any]], 
                 c.get("name", ""),
                 c.get("sector", ""),
                 c.get("score", 0),
-                c.get("setup_type", ""),
-                c.get("risk_level", ""),
-                c.get("close", 0.0),
-                tp.get("entry", 0.0),
-                tp.get("stop_loss", 0.0),
-                tp.get("tp1", 0.0),
-                tp.get("tp2", 0.0),
-                tp.get("rr_ratio", "1 : 2.5"),
-                bandar.get("status", "NEUTRAL"),
-                bandar.get("vol_ratio", 1.0),
-                tech.get("rsi", 50.0),
-                tech.get("mfi", 50.0),
-                fund.get("der", 0.0),
-                fund.get("roe", 0.0),
+                c.get("setup_name") or c.get("setup_label") or c.get("setup_type", ""),
+                c.get("risk_label") or c.get("risk_level", ""),
+                close_price,
+                float(tp.get("entry", close_price)),
+                float(tp.get("stop_loss", 0.0)),
+                float(tp.get("tp1", 0.0)),
+                float(tp.get("tp2", 0.0)),
+                tp.get("risk_reward") or tp.get("rr_ratio", "1 : 2.5"),
+                bandar.get("label") or bandar.get("status_label") or bandar.get("status", "NEUTRAL"),
+                vol_ratio_val,
+                rsi_val,
+                mfi_val,
+                der_val,
+                roe_val,
                 json.dumps(c)
             ))
 
@@ -299,17 +305,66 @@ def generate_excel_export(market_date: str, candidates: List[Dict[str, Any]], su
         row_idx = header_row + i
         tp = c.get("trading_plan", {})
         bandar = c.get("bandarmologi", {})
-        fund = c.get("fundamentals", {})
-        tech = c.get("technical", {})
+        fund = c.get("fundamental") or c.get("fundamentals") or {}
 
-        entry = tp.get("entry", c.get("close", 0))
-        sl = tp.get("stop_loss", 0)
-        tp1 = tp.get("tp1", 0)
-        tp2 = tp.get("tp2", 0)
+        close_price = int(round(float(c.get("price") or c.get("close") or tp.get("entry", 0))))
+        entry = int(round(float(tp.get("entry", close_price))))
+        sl = int(round(float(tp.get("stop_loss", 0))))
+        tp1 = int(round(float(tp.get("tp1", 0))))
+        tp2 = int(round(float(tp.get("tp2", 0))))
 
-        sl_pct = round(((sl - entry) / entry) * 100, 2) if entry > 0 else 0
-        tp1_pct = round(((tp1 - entry) / entry) * 100, 2) if entry > 0 else 0
-        tp2_pct = round(((tp2 - entry) / entry) * 100, 2) if entry > 0 else 0
+        sl_pct = tp.get("risk_pct")
+        if sl_pct is None or sl_pct == 0:
+            sl_pct = round(abs((entry - sl) / entry) * 100, 2) if entry > 0 else 0
+        else:
+            sl_pct = round(abs(float(sl_pct)), 2)
+
+        tp1_pct = tp.get("tp1_pct")
+        if tp1_pct is None or tp1_pct == 0:
+            tp1_pct = round(((tp1 - entry) / entry) * 100, 2) if entry > 0 else 0
+        else:
+            tp1_pct = round(float(tp1_pct), 2)
+
+        tp2_pct = tp.get("tp2_pct")
+        if tp2_pct is None or tp2_pct == 0:
+            tp2_pct = round(((tp2 - entry) / entry) * 100, 2) if entry > 0 else 0
+        else:
+            tp2_pct = round(float(tp2_pct), 2)
+
+        rsi_val = c.get("rsi")
+        mfi_val = c.get("mfi")
+        stoch_k = c.get("stoch_k")
+        stoch_d = c.get("stoch_d")
+        macd_hist = c.get("macd_hist")
+
+        # Stoch RSI Status
+        if stoch_k is not None and stoch_d is not None:
+            cross_str = "Bullish" if float(stoch_k) >= float(stoch_d) else "Bearish"
+            stoch_str = f"{float(stoch_k):.1f} / {float(stoch_d):.1f} ({cross_str})"
+        elif stoch_k is not None:
+            stoch_str = f"%K: {float(stoch_k):.1f}"
+        else:
+            stoch_str = "Netral"
+
+        # MACD Status
+        if macd_hist is not None:
+            macd_hist_f = float(macd_hist)
+            if macd_hist_f > 0:
+                macd_str = f"Bullish (+{macd_hist_f:.2f})"
+            elif macd_hist_f < 0:
+                macd_str = f"Bearish ({macd_hist_f:.2f})"
+            else:
+                macd_str = "Netral (0.0)"
+        else:
+            macd_str = "Netral"
+
+        der_val = fund.get("der")
+        der_str = f"{float(der_val):.2f}%" if (der_val is not None and der_val != "") else "-"
+
+        roe_val = fund.get("roe")
+        roe_str = f"{float(roe_val):.2f}%" if (roe_val is not None and roe_val != "") else "-"
+
+        vol_ratio = float(c.get("vol_ratio") or bandar.get("vol_ratio", 1.0))
 
         row_data = [
             i,
@@ -317,25 +372,25 @@ def generate_excel_export(market_date: str, candidates: List[Dict[str, Any]], su
             c.get("name", ""),
             c.get("sector", ""),
             c.get("score", 0),
-            c.get("setup_label", c.get("setup_type", "")),
-            c.get("risk_label", c.get("risk_level", "")),
-            c.get("close", 0),
+            c.get("setup_name") or c.get("setup_label") or c.get("setup_type", ""),
+            c.get("risk_label") or c.get("risk_level", ""),
+            close_price,
             entry,
             sl,
-            f"{sl_pct}%",
+            f"-{sl_pct}%",
             tp1,
             f"+{tp1_pct}%",
             tp2,
             f"+{tp2_pct}%",
-            tp.get("rr_ratio", "1 : 2.5"),
-            bandar.get("status_label", bandar.get("status", "NEUTRAL")),
-            bandar.get("vol_ratio", 1.0),
-            tech.get("rsi", 50.0),
-            tech.get("mfi", 50.0),
-            tech.get("stoch_rsi_status", "NEUTRAL"),
-            tech.get("macd_status", "NEUTRAL"),
-            f"{fund.get('der', 0.0)}%",
-            f"{fund.get('roe', 0.0)}%"
+            tp.get("risk_reward") or tp.get("rr_ratio", "1 : 2.5"),
+            bandar.get("label") or bandar.get("status_label") or bandar.get("status", "Netral"),
+            round(vol_ratio, 2),
+            round(float(rsi_val), 1) if rsi_val is not None else "-",
+            round(float(mfi_val), 1) if mfi_val is not None else "-",
+            stoch_str,
+            macd_str,
+            der_str,
+            roe_str
         ]
 
         is_even = (i % 2 == 0)
@@ -347,12 +402,12 @@ def generate_excel_export(market_date: str, candidates: List[Dict[str, Any]], su
                 cell.fill = zebra_fill
 
             # Alignments & Numbers
-            if col_idx in [1, 2, 5, 7, 16, 21, 22]:
+            if col_idx in [1, 2, 5, 7, 16, 17, 18, 19, 20, 21, 22, 23, 24]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             elif col_idx in [8, 9, 10, 12, 14]:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
                 cell.number_format = '#,##0'
-            elif col_idx in [11, 13, 15, 18, 19, 20, 23, 24]:
+            elif col_idx in [11, 13, 15]:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="center")
