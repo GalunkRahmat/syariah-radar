@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.7.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.8.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.7.0') {
+          if (key !== 'syariah-radar-v1.8.0') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -60,9 +60,17 @@
       </div>
 
       <!-- ERROR ALERT -->
-      <div id="loginErrorAlert" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-left flex items-center gap-2">
-        <i class="fa-solid fa-circle-exclamation shrink-0"></i>
-        <span id="loginErrorText">Username atau Password salah.</span>
+      <div id="loginErrorAlert" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-left space-y-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+          <span id="loginErrorText">Username atau Password salah.</span>
+        </div>
+        <div id="loginExpiredActionBox" class="hidden pt-2 border-t border-red-500/20">
+          <a href="https://t.me/Galunk" target="_blank" class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-1.5 text-[11px] transition shadow">
+            <i class="fa-brands fa-telegram text-sm"></i>
+            <span>Hubungi Admin (Galunk) via Telegram</span>
+          </a>
+        </div>
       </div>
 
       <!-- LOGIN FORM -->
@@ -917,7 +925,7 @@
           </span>
           <span class="text-[10px] text-gray-500">Anggota hanya bisa login di 1 perangkat aktif</span>
         </div>
-        <form onsubmit="submitCreateUser(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+        <form onsubmit="submitCreateUser(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
           <div>
             <label class="block text-gray-400 text-[10px] mb-1">Username:</label>
             <input type="text" id="newUsername" required placeholder="Contoh: BudiTrader" autocomplete="off" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-emerald-500">
@@ -926,12 +934,23 @@
             <label class="block text-gray-400 text-[10px] mb-1">Password:</label>
             <input type="password" id="newUserPassword" required placeholder="Min 6 karakter" autocomplete="new-password" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-emerald-500">
           </div>
+          <div>
+            <label class="block text-gray-400 text-[10px] mb-1">Peran / Role:</label>
+            <select id="newUserRole" onchange="handleNewUserRoleChange()" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-emerald-500">
+              <option value="user">Anggota (Read-Only / No Export)</option>
+              <option value="admin">Administrator (Akses Penuh)</option>
+            </select>
+          </div>
           <div class="flex items-end gap-1.5">
             <div class="flex-1">
-              <label class="block text-gray-400 text-[10px] mb-1">Peran / Role:</label>
-              <select id="newUserRole" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-emerald-500">
-                <option value="user">Anggota (Read-Only / No Export)</option>
-                <option value="admin">Administrator (Akses Penuh)</option>
+              <label class="block text-gray-400 text-[10px] mb-1">Masa Aktif:</label>
+              <select id="newUserDuration" class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-emerald-500">
+                <option value="30" selected>30 Hari (1 Bln)</option>
+                <option value="7">7 Hari (Trial)</option>
+                <option value="90">90 Hari (3 Bln)</option>
+                <option value="180">180 Hari (6 Bln)</option>
+                <option value="365">1 Tahun (365h)</option>
+                <option value="0">👑 Lifetime</option>
               </select>
             </div>
             <button type="submit" id="createUserSubmitBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-1 shrink-0 h-[32px]">
@@ -962,6 +981,7 @@
               <tr>
                 <th class="py-2.5 px-3">Pengguna</th>
                 <th class="py-2.5 px-2">Peran</th>
+                <th class="py-2.5 px-2">Masa Aktif</th>
                 <th class="py-2.5 px-2 hidden sm:table-cell">Status Perangkat</th>
                 <th class="py-2.5 px-2 hidden md:table-cell">Terakhir Login</th>
                 <th class="py-2.5 px-3 text-right">Aksi</th>
@@ -969,11 +989,46 @@
             </thead>
             <tbody id="userTableBody" class="divide-y divide-gray-800/60 font-medium">
               <tr>
-                <td colspan="5" class="py-4 text-center text-gray-500">Memuat data pengguna...</td>
+                <td colspan="6" class="py-4 text-center text-gray-500">Memuat data pengguna...</td>
               </tr>
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- PERPANJANG MASA AKTIF SUB-MODAL CONTAINER -->
+      <div id="extendExpiryBox" class="hidden bg-[#0e1117] border border-blue-500/40 rounded-xl p-3.5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-hourglass-half"></i>
+            Perpanjang Masa Aktif: <span id="extendTargetUsername" class="text-white font-mono"></span>
+          </span>
+          <button onclick="cancelExtendExpiry()" class="text-gray-400 hover:text-white text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="text-[11px] text-gray-300 bg-gray-900/60 p-2.5 rounded-lg border border-gray-800 flex items-center justify-between">
+          <span>Status Saat Ini:</span>
+          <span id="extendCurrentExpiryText" class="font-semibold text-emerald-400">-</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="block text-gray-400 text-[10px] font-medium">Pilih Opsi Perpanjangan:</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <button type="button" onclick="submitExtendUser(30, 'add')" class="py-2 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-calendar-plus text-xs"></i> +30 Hari
+            </button>
+            <button type="button" onclick="submitExtendUser(90, 'add')" class="py-2 px-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 font-semibold transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-calendar-days text-xs"></i> +90 Hari (3 Bln)
+            </button>
+            <button type="button" onclick="submitExtendUser(365, 'add')" class="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 font-semibold transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-calendar-check text-xs"></i> +1 Tahun
+            </button>
+            <button type="button" onclick="submitExtendUser(0, 'lifetime')" class="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-semibold transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-crown text-xs"></i> 👑 Lifetime
+            </button>
+          </div>
+        </div>
+        <div id="extendAlert" class="hidden p-2 rounded-lg text-xs"></div>
       </div>
 
       <!-- RESET PASSWORD SUB-MODAL CONTAINER -->
@@ -1096,9 +1151,9 @@
           <div>
             <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
               <span id="mobileUserName">Galunk</span>
-              <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Pro Trader</span>
+              <span id="mobileUserRoleBadge" class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Pro Trader</span>
             </h3>
-            <p class="text-[11px] text-gray-400">Akses Penuh Radar Saham Syariah</p>
+            <p id="mobileUserExpiryStatus" class="text-[11px] text-gray-400">Akses Penuh Radar Saham Syariah</p>
           </div>
         </div>
         <button onclick="closeMobileMenuModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
@@ -1476,6 +1531,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.7.0"></script>
+  <script src="/static/app.js?v=1.8.0"></script>
 </body>
 </html>

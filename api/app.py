@@ -31,7 +31,9 @@ from api.auth import (
     list_all_users,
     create_new_user,
     delete_user,
-    reset_user_password
+    reset_user_password,
+    update_user_expiry,
+    AccountExpiredError
 )
 from screener.history_db import (
     save_screening_snapshot,
@@ -148,7 +150,14 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/auth/login")
 def login(req: LoginRequest):
-    user_info = authenticate_user(req.username, req.password, device_id=req.device_id)
+    try:
+        user_info = authenticate_user(req.username, req.password, device_id=req.device_id)
+    except AccountExpiredError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e)
+        )
+
     if not user_info:
         raise HTTPException(
             status_code=401,
@@ -165,6 +174,10 @@ def login(req: LoginRequest):
         "token": token,
         "username": user_info["username"],
         "role": user_info.get("role", "user"),
+        "expires_at": user_info.get("expires_at"),
+        "is_lifetime": user_info.get("is_lifetime", False),
+        "days_remaining": user_info.get("days_remaining"),
+        "expiry_str": user_info.get("expiry_str"),
         "message": f"Login berhasil! Selamat datang, {user_info['username']}."
     }
 
@@ -184,7 +197,7 @@ def get_current_user(request: Request) -> Dict[str, Any]:
     if not user_info:
         raise HTTPException(
             status_code=401,
-            detail="Sesi login tidak aktif atau akun Anda telah login di perangkat lain. Silakan login kembali."
+            detail="Sesi login tidak aktif, masa aktif berakhir, atau akun telah login di perangkat lain. Silakan login kembali."
         )
     return user_info
 
@@ -208,7 +221,11 @@ def verify_auth(user: Dict[str, Any] = Depends(get_current_user)):
         "status": "ok",
         "authenticated": True,
         "username": user["username"],
-        "role": user.get("role", "user")
+        "role": user.get("role", "user"),
+        "expires_at": user.get("expires_at"),
+        "is_lifetime": user.get("is_lifetime", False),
+        "days_remaining": user.get("days_remaining"),
+        "expiry_str": user.get("expiry_str")
     }
 
 
@@ -563,10 +580,16 @@ class CreateUserRequest(BaseModel):
     username: str
     password: str
     role: str = "user"
+    duration_days: Optional[int] = 30
 
 
 class ResetPasswordRequest(BaseModel):
     new_password: str
+
+
+class UpdateExpiryRequest(BaseModel):
+    duration_days: Optional[int] = 30
+    mode: str = "add"  # "add", "set", "lifetime"
 
 
 @app.get("/api/admin/users")
@@ -577,8 +600,21 @@ def get_admin_users(admin: Dict[str, Any] = Depends(require_admin)):
 @app.post("/api/admin/users")
 def add_admin_user(req: CreateUserRequest, admin: Dict[str, Any] = Depends(require_admin)):
     try:
-        created = create_new_user(req.username, req.password, req.role)
-        return {"status": "ok", "message": f"Pengguna '{created['username']}' berhasil didaftarkan!", "user": created}
+        created = create_new_user(req.username, req.password, req.role, duration_days=req.duration_days)
+        return {"status": "ok", "message": f"Pengguna '{created['username']}' berhasil didaftarkan ({created['expiry_str']})!", "user": created}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/users/{username}/expiry")
+def update_admin_user_expiry(username: str, req: UpdateExpiryRequest, admin: Dict[str, Any] = Depends(require_admin)):
+    try:
+        updated = update_user_expiry(username, duration_days=req.duration_days, mode=req.mode)
+        return {
+            "status": "ok",
+            "message": f"Masa aktif akun '{username}' berhasil diperbarui ({updated['expiry_str']})!",
+            "user": updated
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

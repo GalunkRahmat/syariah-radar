@@ -1,17 +1,20 @@
 """
 Authentication & Role-Based Access Control Module for Syariah Swing Radar Pro
 Provides secure password hashing, user authentication, session management,
-role-based permissions (Admin vs Member), and single-device concurrency restriction.
+role-based permissions (Admin vs Member), single-device concurrency restriction,
+and Membership Expiry Management (Masa Aktif Akun Member).
 """
 
 import os
 import time
 import json
+import math
 import secrets
 import hashlib
 import hmac
 import base64
 import shutil
+import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -29,6 +32,51 @@ SECRET_KEY = os.environ.get(
     "SESSION_SECRET",
     "syariah-radar-secure-jwt-hmac-secret-key-2026-idx-be1"
 ).encode("utf-8")
+
+MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+
+class AccountExpiredError(Exception):
+    """Raised when an account's membership period has expired."""
+    def __init__(self, message: str, expiry_str: str):
+        super().__init__(message)
+        self.expiry_str = expiry_str
+
+
+def format_expiry_date(ts: Optional[float]) -> str:
+    """Formats an epoch timestamp into readable Indonesian date: e.g. '17 Nov 2026'."""
+    if not ts:
+        return "Selamanya (Lifetime)"
+    dt = datetime.datetime.fromtimestamp(ts)
+    return f"{dt.day} {MONTHS_ID[dt.month - 1]} {dt.year}"
+
+
+def get_user_expiry_info(user_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Computes membership expiry status, remaining days, and display string."""
+    role = user_data.get("role", "user")
+    is_admin = (role == "admin" or user_data.get("username", "").lower() == "galunk")
+    expires_at = user_data.get("expires_at")
+
+    if is_admin or expires_at is None or expires_at == 0:
+        return {
+            "expires_at": None,
+            "is_lifetime": True,
+            "is_expired": False,
+            "days_remaining": None,
+            "expiry_str": "Selamanya (Lifetime)"
+        }
+
+    now = time.time()
+    is_expired = (now > expires_at)
+    days_left = max(0, math.ceil((expires_at - now) / 86400)) if not is_expired else 0
+
+    return {
+        "expires_at": expires_at,
+        "is_lifetime": False,
+        "is_expired": is_expired,
+        "days_remaining": days_left,
+        "expiry_str": format_expiry_date(expires_at)
+    }
 
 
 def hash_password(password: str, salt: Optional[str] = None) -> tuple[str, str]:
@@ -57,7 +105,7 @@ def load_users() -> Dict[str, Any]:
         except Exception:
             users = {}
 
-    # Ensure admin Galunk exists with admin role
+    # Ensure admin Galunk exists with admin role and lifetime access
     if "galunk" not in users:
         default_pass = "8924641@Ok"
         hashed, salt = hash_password(default_pass)
@@ -69,13 +117,20 @@ def load_users() -> Dict[str, Any]:
             "session_version": 1,
             "current_device_id": None,
             "created_at": time.time(),
-            "last_login": time.time()
+            "last_login": time.time(),
+            "expires_at": None
         }
         save_users(users)
     else:
-        # Guarantee role is admin
+        # Guarantee role is admin and expires_at is None
+        changed = False
         if users["galunk"].get("role") != "admin":
             users["galunk"]["role"] = "admin"
+            changed = True
+        if users["galunk"].get("expires_at") is not None:
+            users["galunk"]["expires_at"] = None
+            changed = True
+        if changed:
             save_users(users)
 
     return users
@@ -93,9 +148,10 @@ def save_users(users: Dict[str, Any]) -> None:
 def authenticate_user(username: str, password: str, device_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
     Authenticates username and password.
-    Enforces Single-Device Login for regular users (role != 'admin').
+    Enforces membership validity (expires_at) and Single-Device Login for regular users.
     Admin (Galunk) is exempt and can login concurrently on multiple devices.
-    Returns user dict on success, None on failure.
+    Returns user dict with expiry details on success, None on credential mismatch.
+    Raises AccountExpiredError if credentials are valid but membership has ended.
     """
     users = load_users()
     key = username.strip().lower()
@@ -103,7 +159,16 @@ def authenticate_user(username: str, password: str, device_id: Optional[str] = N
     if not user_data:
         # Fallback check default admin Galunk
         if key == "galunk" and password == "8924641@Ok":
-            return {"username": "Galunk", "role": "admin", "session_version": 1}
+            return {
+                "username": "Galunk",
+                "role": "admin",
+                "session_version": 1,
+                "expires_at": None,
+                "is_lifetime": True,
+                "is_expired": False,
+                "days_remaining": None,
+                "expiry_str": "Selamanya (Lifetime)"
+            }
         return None
 
     salt = user_data["salt"]
@@ -112,6 +177,14 @@ def authenticate_user(username: str, password: str, device_id: Optional[str] = N
 
     if secrets.compare_digest(computed_hash, expected_hash):
         role = user_data.get("role", "admin" if key == "galunk" else "user")
+        expiry_info = get_user_expiry_info(user_data)
+
+        # Check membership expiration for non-admin members
+        if role != "admin" and expiry_info["is_expired"]:
+            raise AccountExpiredError(
+                f"Masa aktif akun Anda telah berakhir pada {expiry_info['expiry_str']}. Silakan hubungi Admin untuk perpanjangan akses.",
+                expiry_info["expiry_str"]
+            )
 
         # Single Device Enforcement for regular users
         if role != "admin":
@@ -124,7 +197,8 @@ def authenticate_user(username: str, password: str, device_id: Optional[str] = N
                 "username": user_data["username"],
                 "role": role,
                 "session_version": new_version,
-                "device_id": device_id
+                "device_id": device_id,
+                **expiry_info
             }
         else:
             # Admin can login simultaneously on multiple devices
@@ -134,7 +208,8 @@ def authenticate_user(username: str, password: str, device_id: Optional[str] = N
                 "username": user_data["username"],
                 "role": "admin",
                 "session_version": user_data.get("session_version", 1),
-                "device_id": device_id
+                "device_id": device_id,
+                **expiry_info
             }
 
     return None
@@ -162,8 +237,8 @@ def create_session(username: str, role: str = "user", session_version: int = 1, 
 
 def verify_session(token: Optional[str], request_device_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    Verifies HMAC signature, expiration, and single-device concurrency for regular users.
-    Returns dict {"username": str, "role": str} on success, None on failure.
+    Verifies HMAC signature, expiration, membership expiry, and single-device concurrency for regular users.
+    Returns dict with user details and expiry info on success, None on failure or expired membership.
     """
     if not token or not isinstance(token, str):
         return None
@@ -177,7 +252,7 @@ def verify_session(token: Optional[str], request_device_id: Optional[str] = None
                 padded = payload_b64 + "=" * (-len(payload_b64) % 4)
                 data = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8"))
 
-                # Check expiration
+                # Check token expiration
                 if data.get("expires_at", 0) <= time.time():
                     return None
 
@@ -186,12 +261,25 @@ def verify_session(token: Optional[str], request_device_id: Optional[str] = None
 
                 # Admin is always permitted on any device concurrently
                 if role == "admin" or username.lower() == "galunk":
-                    return {"username": username, "role": "admin"}
+                    return {
+                        "username": username,
+                        "role": "admin",
+                        "expires_at": None,
+                        "is_lifetime": True,
+                        "is_expired": False,
+                        "days_remaining": None,
+                        "expiry_str": "Selamanya (Lifetime)"
+                    }
 
-                # Regular users: Check single active session concurrency
+                # Regular users: Check single active session concurrency & membership expiry
                 users = load_users()
                 user_rec = users.get(username.lower())
                 if not user_rec:
+                    return None
+
+                # Check membership expiry
+                expiry_info = get_user_expiry_info(user_rec)
+                if expiry_info["is_expired"]:
                     return None
 
                 current_version = user_rec.get("session_version", 1)
@@ -206,7 +294,11 @@ def verify_session(token: Optional[str], request_device_id: Optional[str] = None
                 if request_device_id and active_device and request_device_id != active_device:
                     return None
 
-                return {"username": username, "role": "user"}
+                return {
+                    "username": username,
+                    "role": "user",
+                    **expiry_info
+                }
         except Exception:
             pass
 
@@ -214,23 +306,25 @@ def verify_session(token: Optional[str], request_device_id: Optional[str] = None
 
 
 def list_all_users() -> List[Dict[str, Any]]:
-    """Lists all users without exposing sensitive password hashes."""
+    """Lists all users with membership expiry, remaining days, and device status."""
     users = load_users()
     result = []
     for k, u in users.items():
+        exp_info = get_user_expiry_info(u)
         result.append({
             "username": u.get("username", k),
             "role": u.get("role", "user"),
             "session_version": u.get("session_version", 1),
             "has_active_device": bool(u.get("current_device_id")),
             "created_at": u.get("created_at"),
-            "last_login": u.get("last_login")
+            "last_login": u.get("last_login"),
+            **exp_info
         })
     return result
 
 
-def create_new_user(username: str, password: str, role: str = "user") -> Dict[str, Any]:
-    """Creates a new user account with hashed password."""
+def create_new_user(username: str, password: str, role: str = "user", duration_days: Optional[int] = 30) -> Dict[str, Any]:
+    """Creates a new user account with hashed password and membership duration."""
     clean_username = username.strip()
     if not clean_username or len(clean_username) < 3 or len(clean_username) > 30:
         raise ValueError("Username harus terdiri dari 3 hingga 30 karakter.")
@@ -246,6 +340,12 @@ def create_new_user(username: str, password: str, role: str = "user") -> Dict[st
         raise ValueError(f"Username '{clean_username}' sudah terdaftar. Gunakan username lain.")
 
     hashed, salt = hash_password(password)
+
+    # Compute expires_at (if admin or duration <= 0, lifetime access)
+    expires_at = None
+    if clean_role != "admin" and duration_days is not None and int(duration_days) > 0:
+        expires_at = time.time() + (int(duration_days) * 86400)
+
     users[key] = {
         "username": clean_username,
         "role": clean_role,
@@ -254,14 +354,55 @@ def create_new_user(username: str, password: str, role: str = "user") -> Dict[st
         "session_version": 1,
         "current_device_id": None,
         "created_at": time.time(),
-        "last_login": None
+        "last_login": None,
+        "expires_at": expires_at
     }
     save_users(users)
 
+    exp_info = get_user_expiry_info(users[key])
     return {
         "username": clean_username,
         "role": clean_role,
-        "created_at": users[key]["created_at"]
+        "created_at": users[key]["created_at"],
+        **exp_info
+    }
+
+
+def update_user_expiry(username: str, duration_days: Optional[int] = 30, mode: str = "add") -> Dict[str, Any]:
+    """
+    Updates or extends membership expiry for a user.
+    mode: 'add' (adds duration to current expiry if active, or from now if expired),
+          'set' (sets expiry from now + duration_days),
+          'lifetime' (sets expires_at to None for permanent access)
+    """
+    key = username.strip().lower()
+    users = load_users()
+    if key not in users:
+        raise ValueError(f"Pengguna '{username}' tidak ditemukan.")
+
+    if key == "galunk":
+        raise ValueError("Akun Administrator (Galunk) selalu memiliki akses Lifetime.")
+
+    if mode == "lifetime" or duration_days is None or int(duration_days) <= 0:
+        users[key]["expires_at"] = None
+    elif mode == "add":
+        now = time.time()
+        current_exp = users[key].get("expires_at")
+        if current_exp and current_exp > now:
+            users[key]["expires_at"] = current_exp + (int(duration_days) * 86400)
+        else:
+            users[key]["expires_at"] = now + (int(duration_days) * 86400)
+    elif mode == "set":
+        users[key]["expires_at"] = time.time() + (int(duration_days) * 86400)
+    else:
+        raise ValueError(f"Mode perpanjangan '{mode}' tidak dikenal.")
+
+    save_users(users)
+    exp_info = get_user_expiry_info(users[key])
+    return {
+        "username": users[key]["username"],
+        "role": users[key].get("role", "user"),
+        **exp_info
     }
 
 

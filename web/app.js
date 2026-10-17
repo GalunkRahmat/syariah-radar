@@ -150,13 +150,63 @@ function hideLoginScreen() {
   if (badge) badge.classList.remove('hidden');
 }
 
-function updateUserBadge(username, role = 'user') {
+function updateUserBadge(username, role = 'user', expiryInfo = null) {
   const el = document.getElementById('loggedInUserName');
-  if (el) {
-    el.innerHTML = `${username || 'Galunk'} ${role === 'admin' ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 rounded ml-1">Admin</span>' : '<span class="text-[9px] bg-blue-500/20 text-blue-300 px-1 rounded ml-1">Member</span>'}`;
+  const isAdmin = (role === 'admin' || (username && username.toLowerCase() === 'galunk'));
+
+  let expiryStr = expiryInfo?.expiry_str || localStorage.getItem('syariah_radar_expiry_str') || '';
+  let daysRemaining = expiryInfo?.days_remaining !== undefined && expiryInfo?.days_remaining !== null
+    ? expiryInfo.days_remaining
+    : (localStorage.getItem('syariah_radar_days_remaining') ? parseInt(localStorage.getItem('syariah_radar_days_remaining')) : null);
+  let isLifetime = expiryInfo?.is_lifetime ?? (localStorage.getItem('syariah_radar_is_lifetime') === 'true');
+
+  if (isAdmin) {
+    isLifetime = true;
+    expiryStr = 'Selamanya (Lifetime)';
+    daysRemaining = null;
   }
+
+  if (el) {
+    let badgeHtml = '';
+    if (isAdmin) {
+      badgeHtml = `<span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded ml-1 font-semibold">👑 Admin</span>`;
+    } else if (isLifetime) {
+      badgeHtml = `<span class="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded ml-1 font-semibold">👑 Lifetime</span>`;
+    } else if (daysRemaining !== null && daysRemaining <= 5) {
+      badgeHtml = `<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded ml-1 font-bold animate-pulse" title="Masa aktif s.d ${expiryStr}">⚠️ ${daysRemaining} Hari</span>`;
+    } else if (daysRemaining !== null) {
+      badgeHtml = `<span class="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded ml-1 font-semibold" title="Masa aktif s.d ${expiryStr}">⏳ ${daysRemaining} Hari</span>`;
+    } else {
+      badgeHtml = `<span class="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded ml-1 font-semibold">Member</span>`;
+    }
+    el.innerHTML = `${username || 'Galunk'} ${badgeHtml}`;
+  }
+
   const mobileEl = document.getElementById('mobileUserName');
   if (mobileEl) mobileEl.innerText = username || 'Galunk';
+
+  const mobileRoleBadge = document.getElementById('mobileUserRoleBadge');
+  if (mobileRoleBadge) {
+    mobileRoleBadge.innerText = isAdmin ? 'Admin' : 'Member';
+    mobileRoleBadge.className = isAdmin
+      ? 'text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30'
+      : 'text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30';
+  }
+
+  const mobileExpiryStatus = document.getElementById('mobileUserExpiryStatus');
+  if (mobileExpiryStatus) {
+    if (isAdmin) {
+      mobileExpiryStatus.innerText = '👑 Administrator • Akses Penuh Radar';
+    } else if (isLifetime) {
+      mobileExpiryStatus.innerText = '👑 VIP Lifetime • Akses Tanpa Batas';
+    } else if (daysRemaining !== null && daysRemaining <= 5) {
+      mobileExpiryStatus.innerHTML = `<span class="text-amber-400 font-semibold"><i class="fa-solid fa-clock"></i> Segera Berakhir: s.d ${expiryStr} (Sisa ${daysRemaining} Hari)</span>`;
+    } else if (daysRemaining !== null) {
+      mobileExpiryStatus.innerHTML = `<span class="text-blue-300 font-semibold"><i class="fa-solid fa-hourglass-half"></i> Masa Aktif: s.d ${expiryStr} (Sisa ${daysRemaining} Hari)</span>`;
+    } else {
+      mobileExpiryStatus.innerText = 'Akses Radar Saham Syariah';
+    }
+  }
 }
 
 function applyRolePermissions(role) {
@@ -248,6 +298,7 @@ async function handleLoginSubmit(event) {
   const submitBtn = document.getElementById('loginSubmitBtn');
   const errAlert = document.getElementById('loginErrorAlert');
   const errText = document.getElementById('loginErrorText');
+  const expiredAction = document.getElementById('loginExpiredActionBox');
 
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -256,6 +307,7 @@ async function handleLoginSubmit(event) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Memverifikasi...</span>';
   errAlert.classList.add('hidden');
+  if (expiredAction) expiredAction.classList.add('hidden');
 
   try {
     const res = await fetch('/api/auth/login', {
@@ -268,21 +320,37 @@ async function handleLoginSubmit(event) {
       localStorage.setItem('syariah_radar_token', data.token);
       localStorage.setItem('syariah_radar_user', data.username);
       localStorage.setItem('syariah_radar_role', data.role || 'user');
+      if (data.expiry_str) localStorage.setItem('syariah_radar_expiry_str', data.expiry_str);
+      if (data.days_remaining !== undefined && data.days_remaining !== null) {
+        localStorage.setItem('syariah_radar_days_remaining', data.days_remaining);
+      } else {
+        localStorage.removeItem('syariah_radar_days_remaining');
+      }
+      localStorage.setItem('syariah_radar_is_lifetime', String(Boolean(data.is_lifetime)));
+
       hideLoginScreen();
       sanitizeSearchInput();
       setTimeout(sanitizeSearchInput, 100);
       setTimeout(sanitizeSearchInput, 400);
-      updateUserBadge(data.username, data.role);
+      updateUserBadge(data.username, data.role, data);
       applyRolePermissions(data.role);
       showToast(`Selamat datang, ${data.username}!`);
       loadHistoryDates();
       fetchResults(true);
     } else {
       errText.innerText = data.detail || 'Username atau password salah.';
+      if (expiredAction) {
+        if (res.status === 403 || (data.detail && data.detail.includes('Masa aktif'))) {
+          expiredAction.classList.remove('hidden');
+        } else {
+          expiredAction.classList.add('hidden');
+        }
+      }
       errAlert.classList.remove('hidden');
     }
   } catch (err) {
     errText.innerText = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+    if (expiredAction) expiredAction.classList.add('hidden');
     errAlert.classList.remove('hidden');
   } finally {
     submitBtn.disabled = false;
@@ -305,6 +373,9 @@ async function handleLogout() {
   } catch (e) {}
   localStorage.removeItem('syariah_radar_token');
   localStorage.removeItem('syariah_radar_role');
+  localStorage.removeItem('syariah_radar_expiry_str');
+  localStorage.removeItem('syariah_radar_days_remaining');
+  localStorage.removeItem('syariah_radar_is_lifetime');
   showLoginScreen('Anda telah berhasil keluar.');
 }
 
@@ -327,11 +398,19 @@ async function checkAuthStatus() {
       const data = await res.json();
       const role = data.role || savedRole;
       localStorage.setItem('syariah_radar_role', role);
+      if (data.expiry_str) localStorage.setItem('syariah_radar_expiry_str', data.expiry_str);
+      if (data.days_remaining !== undefined && data.days_remaining !== null) {
+        localStorage.setItem('syariah_radar_days_remaining', data.days_remaining);
+      } else {
+        localStorage.removeItem('syariah_radar_days_remaining');
+      }
+      localStorage.setItem('syariah_radar_is_lifetime', String(Boolean(data.is_lifetime)));
+
       hideLoginScreen();
       sanitizeSearchInput();
       setTimeout(sanitizeSearchInput, 100);
       setTimeout(sanitizeSearchInput, 400);
-      updateUserBadge(data.username || savedUser, role);
+      updateUserBadge(data.username || savedUser, role, data);
       applyRolePermissions(role);
       loadHistoryDates();
       fetchResults();
@@ -340,6 +419,10 @@ async function checkAuthStatus() {
       localStorage.removeItem('syariah_radar_token');
       localStorage.removeItem('syariah_radar_role');
       showLoginScreen(errData.detail || 'Sesi Anda telah kedaluwarsa atau akun telah login di perangkat lain.');
+      const expiredAction = document.getElementById('loginExpiredActionBox');
+      if (expiredAction && (res.status === 403 || (errData.detail && errData.detail.includes('Masa aktif')))) {
+        expiredAction.classList.remove('hidden');
+      }
     }
   } catch (e) {
     hideLoginScreen();
@@ -2166,6 +2249,7 @@ function toggleMobileSearch() {
 // ADMIN USER MANAGEMENT HANDLERS (ADMIN ONLY)
 // -------------------------------------------------------------
 let currentResetTarget = '';
+let currentExtendTarget = '';
 
 function openUserManagementModal() {
   const role = localStorage.getItem('syariah_radar_role');
@@ -2184,6 +2268,20 @@ function closeUserManagementModal() {
   const modal = document.getElementById('userManagementModal');
   if (modal) modal.classList.add('hidden');
   cancelResetPassword();
+  cancelExtendExpiry();
+}
+
+function handleNewUserRoleChange() {
+  const roleSelect = document.getElementById('newUserRole');
+  const durationSelect = document.getElementById('newUserDuration');
+  if (!roleSelect || !durationSelect) return;
+  if (roleSelect.value === 'admin') {
+    durationSelect.value = '0';
+    durationSelect.disabled = true;
+  } else {
+    durationSelect.disabled = false;
+    if (durationSelect.value === '0') durationSelect.value = '30';
+  }
 }
 
 async function loadAdminUsers() {
@@ -2191,7 +2289,7 @@ async function loadAdminUsers() {
   const countText = document.getElementById('userCountText');
   if (!tbody) return;
 
-  tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Memuat pengguna...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Memuat pengguna...</td></tr>`;
 
   try {
     const res = await authFetch('/api/admin/users');
@@ -2200,17 +2298,30 @@ async function loadAdminUsers() {
     if (countText) countText.innerText = users.length;
 
     if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">Belum ada pengguna.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-500">Belum ada pengguna.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = users.map(u => {
       const isGalunk = (u.username.toLowerCase() === 'galunk');
-      const isAdmin = (u.role === 'admin');
+      const isAdmin = (u.role === 'admin' || isGalunk);
       
       const roleBadge = isAdmin
         ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Admin</span>`
         : `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">Member</span>`;
+
+      let expiryBadge = '';
+      if (isAdmin || u.is_lifetime) {
+        expiryBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 w-max"><i class="fa-solid fa-crown text-[9px]"></i> Lifetime</span>`;
+      } else if (u.is_expired) {
+        expiryBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1 w-max"><i class="fa-solid fa-ban text-[9px]"></i> Habis (${u.expiry_str})</span>`;
+      } else if (u.days_remaining !== undefined && u.days_remaining !== null && u.days_remaining <= 5) {
+        expiryBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 w-max animate-pulse" title="Aktif s.d ${u.expiry_str}"><i class="fa-solid fa-clock text-[9px]"></i> Sisa ${u.days_remaining} Hari</span>`;
+      } else if (u.days_remaining !== undefined && u.days_remaining !== null) {
+        expiryBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 w-max" title="Aktif s.d ${u.expiry_str}"><i class="fa-solid fa-hourglass-half text-[9px]"></i> ${u.days_remaining} Hari (${u.expiry_str})</span>`;
+      } else {
+        expiryBadge = `<span class="text-gray-500 text-[10px]">-</span>`;
+      }
 
       const deviceStatus = isAdmin
         ? `<span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-400"></i> Multi-Device</span>`
@@ -2224,13 +2335,19 @@ async function loadAdminUsers() {
 
       const actionButtons = `
         <div class="flex items-center justify-end gap-1.5">
+          ${isGalunk ? '' : `
+          <button onclick="startExtendUser('${u.username}', '${u.expiry_str}', ${u.days_remaining || 0}, ${Boolean(u.is_lifetime || isAdmin)})" class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[10px] font-semibold border border-blue-500/40 transition flex items-center gap-1" title="Perpanjang Masa Aktif">
+            <i class="fa-solid fa-hourglass-half text-[9px]"></i>
+            <span class="hidden sm:inline">Perpanjang</span>
+          </button>
+          `}
           <button onclick="startResetPassword('${u.username}')" class="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-semibold border border-amber-500/40 transition flex items-center gap-1" title="Reset Password (Kick login lama)">
-            <i class="fa-solid fa-key"></i>
+            <i class="fa-solid fa-key text-[9px]"></i>
             <span class="hidden sm:inline">Reset</span>
           </button>
           ${isGalunk ? '' : `
           <button onclick="deleteUserAccount('${u.username}')" class="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 text-[10px] font-semibold border border-red-500/40 transition flex items-center gap-1" title="Hapus Akun Pengguna">
-            <i class="fa-solid fa-trash"></i>
+            <i class="fa-solid fa-trash text-[9px]"></i>
             <span class="hidden sm:inline">Hapus</span>
           </button>
           `}
@@ -2246,6 +2363,7 @@ async function loadAdminUsers() {
             </div>
           </td>
           <td class="py-2.5 px-2">${roleBadge}</td>
+          <td class="py-2.5 px-2">${expiryBadge}</td>
           <td class="py-2.5 px-2 hidden sm:table-cell">${deviceStatus}</td>
           <td class="py-2.5 px-2 hidden md:table-cell text-gray-400 text-[11px]">${lastLoginStr}</td>
           <td class="py-2.5 px-3 text-right">${actionButtons}</td>
@@ -2255,7 +2373,7 @@ async function loadAdminUsers() {
 
   } catch (err) {
     console.error("Gagal load users:", err);
-    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-400">Gagal memuat pengguna: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-400">Gagal memuat pengguna: ${err.message}</td></tr>`;
   }
 }
 
@@ -2264,12 +2382,14 @@ async function submitCreateUser(event) {
   const usernameInput = document.getElementById('newUsername');
   const passwordInput = document.getElementById('newUserPassword');
   const roleSelect = document.getElementById('newUserRole');
+  const durationSelect = document.getElementById('newUserDuration');
   const submitBtn = document.getElementById('createUserSubmitBtn');
   const alertBox = document.getElementById('createUserAlert');
 
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
   const role = roleSelect.value;
+  const duration_days = durationSelect ? parseInt(durationSelect.value) || 0 : 30;
 
   if (!username || !password) return;
 
@@ -2281,7 +2401,7 @@ async function submitCreateUser(event) {
     const res = await authFetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, role })
+      body: JSON.stringify({ username, password, role, duration_days })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Gagal menambahkan user');
@@ -2292,6 +2412,7 @@ async function submitCreateUser(event) {
 
     usernameInput.value = '';
     passwordInput.value = '';
+    if (durationSelect && role !== 'admin') durationSelect.value = '30';
     showToast(`✅ Akun '${username}' berhasil didaftarkan!`);
     loadAdminUsers();
   } catch (err) {
@@ -2301,6 +2422,62 @@ async function submitCreateUser(event) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<i class="fa-solid fa-plus text-xs"></i><span>Tambah</span>';
+  }
+}
+
+function startExtendUser(username, expiryStr, daysRemaining, isLifetime) {
+  currentExtendTarget = username;
+  const box = document.getElementById('extendExpiryBox');
+  const targetLabel = document.getElementById('extendTargetUsername');
+  const currentText = document.getElementById('extendCurrentExpiryText');
+  const alert = document.getElementById('extendAlert');
+
+  if (targetLabel) targetLabel.innerText = username;
+  if (currentText) {
+    if (isLifetime) {
+      currentText.innerHTML = '<span class="text-amber-400 font-bold"><i class="fa-solid fa-crown text-xs mr-1"></i> Selamanya (Lifetime)</span>';
+    } else if (daysRemaining > 0) {
+      currentText.innerHTML = `<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check text-xs mr-1"></i> Aktif s.d ${expiryStr} (Sisa ${daysRemaining} Hari)</span>`;
+    } else {
+      currentText.innerHTML = `<span class="text-red-400 font-bold"><i class="fa-solid fa-circle-xmark text-xs mr-1"></i> Kadaluwarsa (${expiryStr})</span>`;
+    }
+  }
+  if (alert) alert.classList.add('hidden');
+  if (box) {
+    box.classList.remove('hidden');
+    box.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function cancelExtendExpiry() {
+  currentExtendTarget = '';
+  const box = document.getElementById('extendExpiryBox');
+  if (box) box.classList.add('hidden');
+}
+
+async function submitExtendUser(durationDays, mode = 'add') {
+  if (!currentExtendTarget) return;
+  const alert = document.getElementById('extendAlert');
+  if (alert) alert.classList.add('hidden');
+
+  try {
+    const res = await authFetch(`/api/admin/users/${encodeURIComponent(currentExtendTarget)}/expiry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration_days: durationDays, mode: mode })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Gagal memperbarui masa aktif');
+
+    showToast(`✅ Masa aktif '${currentExtendTarget}' berhasil diperbarui!`);
+    cancelExtendExpiry();
+    loadAdminUsers();
+  } catch (err) {
+    if (alert) {
+      alert.className = 'p-2 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30';
+      alert.innerText = err.message;
+      alert.classList.remove('hidden');
+    }
   }
 }
 
