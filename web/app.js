@@ -13,21 +13,53 @@ let historyDatesList = [];
 // -------------------------------------------------------------
 // USER AUTHENTICATION & ACCESS CONTROL
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// USER AUTHENTICATION & ACCESS CONTROL (RBAC & DEVICE RESTRICTION)
+// -------------------------------------------------------------
+function getOrCreateDeviceId() {
+  let id = localStorage.getItem('syariah_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now().toString(36);
+    localStorage.setItem('syariah_device_id', id);
+  }
+  return id;
+}
+
 async function authFetch(url, options = {}) {
   const token = localStorage.getItem('syariah_radar_token');
+  const deviceId = getOrCreateDeviceId();
   options.headers = options.headers || {};
-  if (token) {
-    if (options.headers instanceof Headers) {
-      options.headers.set('Authorization', `Bearer ${token}`);
-    } else {
-      options.headers['Authorization'] = `Bearer ${token}`;
-    }
+  if (options.headers instanceof Headers) {
+    if (token) options.headers.set('Authorization', `Bearer ${token}`);
+    options.headers.set('X-Device-Id', deviceId);
+  } else {
+    if (token) options.headers['Authorization'] = `Bearer ${token}`;
+    options.headers['X-Device-Id'] = deviceId;
   }
+
   const res = await fetch(url, options);
   if (res.status === 401) {
-    showLoginScreen('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
-    throw new Error('Sesi kedaluwarsa. Silakan login kembali.');
+    localStorage.removeItem('syariah_radar_token');
+    localStorage.removeItem('syariah_radar_role');
+    let msg = 'Sesi Anda telah kedaluwarsa atau akun Anda telah login di perangkat lain.';
+    try {
+      const errData = await res.json();
+      if (errData && errData.detail) msg = errData.detail;
+    } catch (e) {}
+    showLoginScreen(msg);
+    throw new Error(msg);
   }
+
+  if (res.status === 403) {
+    let msg = 'Akses ditolak: Fitur ini khusus untuk Administrator.';
+    try {
+      const errData = await res.json();
+      if (errData && errData.detail) msg = errData.detail;
+    } catch (e) {}
+    showToast(`⛔ ${msg}`);
+    throw new Error(msg);
+  }
+
   return res;
 }
 
@@ -53,11 +85,50 @@ function hideLoginScreen() {
   if (badge) badge.classList.remove('hidden');
 }
 
-function updateUserBadge(username) {
+function updateUserBadge(username, role = 'user') {
   const el = document.getElementById('loggedInUserName');
-  if (el) el.innerText = username || 'Galunk';
+  if (el) {
+    el.innerHTML = `${username || 'Galunk'} ${role === 'admin' ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 rounded ml-1">Admin</span>' : '<span class="text-[9px] bg-blue-500/20 text-blue-300 px-1 rounded ml-1">Member</span>'}`;
+  }
   const mobileEl = document.getElementById('mobileUserName');
   if (mobileEl) mobileEl.innerText = username || 'Galunk';
+}
+
+function applyRolePermissions(role) {
+  const isAdmin = (role === 'admin');
+
+  // Desktop user management button: only visible for admin
+  const userMgmtBtn = document.getElementById('adminUserMgmtBtn');
+  if (userMgmtBtn) {
+    if (isAdmin) {
+      userMgmtBtn.classList.remove('hidden');
+      userMgmtBtn.classList.add('inline-flex');
+    } else {
+      userMgmtBtn.classList.add('hidden');
+      userMgmtBtn.classList.remove('inline-flex');
+    }
+  }
+
+  // Admin-only elements (Excel export buttons, Telegram config, Tambah Saham)
+  const adminElements = document.querySelectorAll('.admin-only');
+  adminElements.forEach(el => {
+    if (el.id === 'adminUserMgmtBtn') return; // Handled separately
+    if (isAdmin) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  });
+
+  // Notice for mobile non-admin users in Arsip
+  const nonAdminNotice = document.getElementById('mobileNonAdminExcelNotice');
+  if (nonAdminNotice) {
+    if (isAdmin) {
+      nonAdminNotice.classList.add('hidden');
+    } else {
+      nonAdminNotice.classList.remove('hidden');
+    }
+  }
 }
 
 function togglePasswordVisibility() {
@@ -83,6 +154,7 @@ async function handleLoginSubmit(event) {
 
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
+  const device_id = getOrCreateDeviceId();
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Memverifikasi...</span>';
@@ -92,14 +164,16 @@ async function handleLoginSubmit(event) {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, device_id })
     });
     const data = await res.json();
     if (res.ok && data.status === 'ok') {
       localStorage.setItem('syariah_radar_token', data.token);
       localStorage.setItem('syariah_radar_user', data.username);
+      localStorage.setItem('syariah_radar_role', data.role || 'user');
       hideLoginScreen();
-      updateUserBadge(data.username);
+      updateUserBadge(data.username, data.role);
+      applyRolePermissions(data.role);
       showToast(`Selamat datang, ${data.username}!`);
       loadHistoryDates();
       fetchResults(true);
@@ -122,36 +196,52 @@ async function handleLogout() {
     if (token) {
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Device-Id': getOrCreateDeviceId()
+        }
       });
     }
   } catch (e) {}
   localStorage.removeItem('syariah_radar_token');
+  localStorage.removeItem('syariah_radar_role');
   showLoginScreen('Anda telah berhasil keluar.');
 }
 
 async function checkAuthStatus() {
   const token = localStorage.getItem('syariah_radar_token');
   const savedUser = localStorage.getItem('syariah_radar_user') || 'Galunk';
+  const savedRole = localStorage.getItem('syariah_radar_role') || 'user';
   if (!token) {
     showLoginScreen();
     return;
   }
   try {
     const res = await fetch('/api/auth/verify', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Device-Id': getOrCreateDeviceId()
+      }
     });
     if (res.ok) {
+      const data = await res.json();
+      const role = data.role || savedRole;
+      localStorage.setItem('syariah_radar_role', role);
       hideLoginScreen();
-      updateUserBadge(savedUser);
+      updateUserBadge(data.username || savedUser, role);
+      applyRolePermissions(role);
       loadHistoryDates();
       fetchResults();
     } else {
-      showLoginScreen('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
+      const errData = await res.json().catch(() => ({}));
+      localStorage.removeItem('syariah_radar_token');
+      localStorage.removeItem('syariah_radar_role');
+      showLoginScreen(errData.detail || 'Sesi Anda telah kedaluwarsa atau akun telah login di perangkat lain.');
     }
   } catch (e) {
     hideLoginScreen();
-    updateUserBadge(savedUser);
+    updateUserBadge(savedUser, savedRole);
+    applyRolePermissions(savedRole);
     loadHistoryDates();
     fetchResults();
   }
@@ -1622,6 +1712,226 @@ function toggleMobileSearch() {
     if (container) {
       container.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  }
+}
+
+// -------------------------------------------------------------
+// ADMIN USER MANAGEMENT HANDLERS (ADMIN ONLY)
+// -------------------------------------------------------------
+let currentResetTarget = '';
+
+function openUserManagementModal() {
+  const role = localStorage.getItem('syariah_radar_role');
+  if (role !== 'admin') {
+    showToast('⛔ Akses khusus Administrator (Galunk).');
+    return;
+  }
+  const modal = document.getElementById('userManagementModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    loadAdminUsers();
+  }
+}
+
+function closeUserManagementModal() {
+  const modal = document.getElementById('userManagementModal');
+  if (modal) modal.classList.add('hidden');
+  cancelResetPassword();
+}
+
+async function loadAdminUsers() {
+  const tbody = document.getElementById('userTableBody');
+  const countText = document.getElementById('userCountText');
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Memuat pengguna...</td></tr>`;
+
+  try {
+    const res = await authFetch('/api/admin/users');
+    const data = await res.json();
+    const users = data.users || [];
+    if (countText) countText.innerText = users.length;
+
+    if (users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">Belum ada pengguna.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const isGalunk = (u.username.toLowerCase() === 'galunk');
+      const isAdmin = (u.role === 'admin');
+      
+      const roleBadge = isAdmin
+        ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Admin</span>`
+        : `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">Member</span>`;
+
+      const deviceStatus = isAdmin
+        ? `<span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-400"></i> Multi-Device</span>`
+        : (u.has_active_device
+            ? `<span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-circle-check text-emerald-400"></i> 1 Device Aktif (v${u.session_version})</span>`
+            : `<span class="text-[10px] text-gray-500">⚪ Belum login</span>`);
+
+      const lastLoginStr = u.last_login
+        ? new Date(u.last_login * 1000).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+        : 'Belum pernah';
+
+      const actionButtons = `
+        <div class="flex items-center justify-end gap-1.5">
+          <button onclick="startResetPassword('${u.username}')" class="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-semibold border border-amber-500/40 transition flex items-center gap-1" title="Reset Password (Kick login lama)">
+            <i class="fa-solid fa-key"></i>
+            <span class="hidden sm:inline">Reset</span>
+          </button>
+          ${isGalunk ? '' : `
+          <button onclick="deleteUserAccount('${u.username}')" class="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 text-[10px] font-semibold border border-red-500/40 transition flex items-center gap-1" title="Hapus Akun Pengguna">
+            <i class="fa-solid fa-trash"></i>
+            <span class="hidden sm:inline">Hapus</span>
+          </button>
+          `}
+        </div>
+      `;
+
+      return `
+        <tr class="hover:bg-gray-800/40 transition">
+          <td class="py-2.5 px-3 font-semibold text-white">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid ${isAdmin ? 'fa-user-shield text-amber-400' : 'fa-user text-gray-400'} text-xs"></i>
+              <span>${u.username}</span>
+            </div>
+          </td>
+          <td class="py-2.5 px-2">${roleBadge}</td>
+          <td class="py-2.5 px-2 hidden sm:table-cell">${deviceStatus}</td>
+          <td class="py-2.5 px-2 hidden md:table-cell text-gray-400 text-[11px]">${lastLoginStr}</td>
+          <td class="py-2.5 px-3 text-right">${actionButtons}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.error("Gagal load users:", err);
+    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-400">Gagal memuat pengguna: ${err.message}</td></tr>`;
+  }
+}
+
+async function submitCreateUser(event) {
+  event.preventDefault();
+  const usernameInput = document.getElementById('newUsername');
+  const passwordInput = document.getElementById('newUserPassword');
+  const roleSelect = document.getElementById('newUserRole');
+  const submitBtn = document.getElementById('createUserSubmitBtn');
+  const alertBox = document.getElementById('createUserAlert');
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+  const role = roleSelect.value;
+
+  if (!username || !password) return;
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i>';
+  alertBox.classList.add('hidden');
+
+  try {
+    const res = await authFetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Gagal menambahkan user');
+
+    alertBox.className = 'p-2 rounded-lg text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    alertBox.innerText = data.message;
+    alertBox.classList.remove('hidden');
+
+    usernameInput.value = '';
+    passwordInput.value = '';
+    showToast(`✅ Akun '${username}' berhasil didaftarkan!`);
+    loadAdminUsers();
+  } catch (err) {
+    alertBox.className = 'p-2 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30';
+    alertBox.innerText = err.message;
+    alertBox.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fa-solid fa-plus text-xs"></i><span>Tambah</span>';
+  }
+}
+
+function startResetPassword(username) {
+  currentResetTarget = username;
+  const box = document.getElementById('resetPasswordBox');
+  const targetLabel = document.getElementById('resetTargetUsername');
+  const input = document.getElementById('resetNewPasswordInput');
+  const alert = document.getElementById('resetAlert');
+
+  if (targetLabel) targetLabel.innerText = username;
+  if (input) input.value = '';
+  if (alert) alert.classList.add('hidden');
+  if (box) {
+    box.classList.remove('hidden');
+    box.scrollIntoView({ behavior: 'smooth' });
+    if (input) input.focus();
+  }
+}
+
+function cancelResetPassword() {
+  currentResetTarget = '';
+  const box = document.getElementById('resetPasswordBox');
+  if (box) box.classList.add('hidden');
+}
+
+async function submitResetPassword() {
+  if (!currentResetTarget) return;
+  const input = document.getElementById('resetNewPasswordInput');
+  const alert = document.getElementById('resetAlert');
+  const newPassword = input ? input.value : '';
+
+  if (!newPassword || newPassword.length < 6) {
+    if (alert) {
+      alert.className = 'p-2 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30';
+      alert.innerText = 'Password baru minimal 6 karakter.';
+      alert.classList.remove('hidden');
+    }
+    return;
+  }
+
+  try {
+    const res = await authFetch(`/api/admin/users/${encodeURIComponent(currentResetTarget)}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_password: newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Gagal mereset password');
+
+    showToast(`✅ Password '${currentResetTarget}' berhasil direset!`);
+    cancelResetPassword();
+    loadAdminUsers();
+  } catch (err) {
+    if (alert) {
+      alert.className = 'p-2 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30';
+      alert.innerText = err.message;
+      alert.classList.remove('hidden');
+    }
+  }
+}
+
+async function deleteUserAccount(username) {
+  if (!confirm(`Apakah Anda yakin ingin menghapus akun pengguna '${username}'?`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch(`/api/admin/users/${encodeURIComponent(username)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Gagal menghapus user');
+
+    showToast(`✅ Akun '${username}' berhasil dihapus.`);
+    loadAdminUsers();
+  } catch (err) {
+    showToast(`⚠️ Gagal menghapus user: ${err.message}`);
   }
 }
 

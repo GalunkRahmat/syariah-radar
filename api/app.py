@@ -23,7 +23,16 @@ from notifier.telegram_alert import (
     send_daily_alert,
     build_alert_message
 )
-from api.auth import authenticate_user, create_session, verify_session, revoke_session
+from api.auth import (
+    authenticate_user,
+    create_session,
+    verify_session,
+    revoke_session,
+    list_all_users,
+    create_new_user,
+    delete_user,
+    reset_user_password
+)
 from screener.history_db import (
     save_screening_snapshot,
     get_history_dates,
@@ -134,27 +143,33 @@ def get_system_info():
 class LoginRequest(BaseModel):
     username: str
     password: str
+    device_id: Optional[str] = None
 
 
 @app.post("/api/auth/login")
 def login(req: LoginRequest):
-    username = authenticate_user(req.username, req.password)
-    if not username:
+    user_info = authenticate_user(req.username, req.password, device_id=req.device_id)
+    if not user_info:
         raise HTTPException(
             status_code=401,
             detail="Username atau Password salah! Akses ditolak."
         )
-    token = create_session(username)
+    token = create_session(
+        username=user_info["username"],
+        role=user_info.get("role", "user"),
+        session_version=user_info.get("session_version", 1),
+        device_id=req.device_id
+    )
     return {
         "status": "ok",
         "token": token,
-        "username": username,
-        "message": f"Login berhasil! Selamat datang, {username}."
+        "username": user_info["username"],
+        "role": user_info.get("role", "user"),
+        "message": f"Login berhasil! Selamat datang, {user_info['username']}."
     }
 
 
-@app.get("/api/auth/verify")
-def verify_auth(request: Request):
+def get_current_user(request: Request) -> Dict[str, Any]:
     auth_header = request.headers.get("Authorization", "")
     token = ""
     if auth_header.startswith("Bearer "):
@@ -164,10 +179,37 @@ def verify_auth(request: Request):
     elif request.query_params.get("token"):
         token = request.query_params.get("token", "")
 
-    username = verify_session(token)
-    if not username:
-        raise HTTPException(status_code=401, detail="Sesi login tidak valid atau sudah kedaluwarsa.")
-    return {"status": "ok", "authenticated": True, "username": username}
+    device_id = request.headers.get("X-Device-Id") or request.query_params.get("device_id")
+    user_info = verify_session(token, request_device_id=device_id)
+    if not user_info:
+        raise HTTPException(
+            status_code=401,
+            detail="Sesi login tidak aktif atau akun Anda telah login di perangkat lain. Silakan login kembali."
+        )
+    return user_info
+
+
+def require_auth(user: Dict[str, Any] = Depends(get_current_user)) -> str:
+    return user["username"]
+
+
+def require_admin(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    if user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Akses ditolak: Fitur ini khusus untuk Administrator (Galunk)."
+        )
+    return user
+
+
+@app.get("/api/auth/verify")
+def verify_auth(user: Dict[str, Any] = Depends(get_current_user)):
+    return {
+        "status": "ok",
+        "authenticated": True,
+        "username": user["username"],
+        "role": user.get("role", "user")
+    }
 
 
 @app.post("/api/auth/logout")
@@ -185,25 +227,6 @@ def logout(request: Request):
     return {"status": "ok", "message": "Berhasil keluar dari radar."}
 
 
-def require_auth(request: Request) -> str:
-    auth_header = request.headers.get("Authorization", "")
-    token = ""
-    if auth_header.startswith("Bearer "):
-        token = auth_header.split(" ", 1)[1].strip()
-    elif "auth_token" in request.cookies:
-        token = request.cookies.get("auth_token", "")
-    elif request.query_params.get("token"):
-        token = request.query_params.get("token", "")
-
-    username = verify_session(token)
-    if not username:
-        raise HTTPException(
-            status_code=401,
-            detail="Akses ditolak: Anda harus login terlebih dahulu untuk mengakses data radar saham."
-        )
-    return username
-
-
 # -------------------------------------------------------------
 # SHARIA STOCKS & WATCHLIST MANAGEMENT
 # -------------------------------------------------------------
@@ -217,7 +240,7 @@ class AddStockRequest(BaseModel):
 
 
 @app.post("/api/sharia-stocks/add")
-def add_sharia_stock(req: AddStockRequest, user: str = Depends(require_auth)):
+def add_sharia_stock(req: AddStockRequest, admin: Dict[str, Any] = Depends(require_admin)):
     code = req.code.strip().upper()
     if not code or len(code) > 6:
         raise HTTPException(status_code=400, detail="Kode saham tidak valid.")
@@ -268,7 +291,7 @@ def add_sharia_stock(req: AddStockRequest, user: str = Depends(require_auth)):
 
 
 @app.delete("/api/sharia-stocks/{code}")
-def delete_sharia_stock(code: str, user: str = Depends(require_auth)):
+def delete_sharia_stock(code: str, admin: Dict[str, Any] = Depends(require_admin)):
     code = code.strip().upper()
     stocks = load_sharia_stocks()
     new_stocks = [s for s in stocks if s['code'] != code]
@@ -366,7 +389,7 @@ def get_stock_signal_history(code: str, user: str = Depends(require_auth)):
 def export_screener_excel(
     date: Optional[str] = Query(None, description="Date YYYY-MM-DD"),
     min_score: int = Query(50),
-    user: str = Depends(require_auth)
+    admin: Dict[str, Any] = Depends(require_admin)
 ):
     target_date = date or get_latest_trading_date().strftime("%Y-%m-%d")
     hist_data = get_history_candidates(target_date)
@@ -510,7 +533,7 @@ class TelegramConfigRequest(BaseModel):
 
 
 @app.post("/api/telegram/config")
-def set_telegram_config(req: TelegramConfigRequest, user: str = Depends(require_auth)):
+def set_telegram_config(req: TelegramConfigRequest, admin: Dict[str, Any] = Depends(require_admin)):
     cfg = {
         "bot_token": req.bot_token.strip(),
         "chat_id": req.chat_id.strip(),
@@ -521,7 +544,7 @@ def set_telegram_config(req: TelegramConfigRequest, user: str = Depends(require_
 
 
 @app.post("/api/telegram/send-alert")
-def trigger_telegram_alert(user: str = Depends(require_auth)):
+def trigger_telegram_alert(admin: Dict[str, Any] = Depends(require_admin)):
     cfg = load_telegram_config()
     if not cfg.get("bot_token") or not cfg.get("chat_id"):
         raise HTTPException(status_code=400, detail="Telegram Bot Token atau Chat ID belum dikonfigurasi.")
@@ -531,3 +554,53 @@ def trigger_telegram_alert(user: str = Depends(require_auth)):
         raise HTTPException(status_code=500, detail="Gagal mengirim pesan ke Telegram. Periksa Bot Token dan Chat ID Anda.")
 
     return {"success": True, "message": "Sinyal screener berhasil dikirim ke Telegram Anda!"}
+
+
+# -------------------------------------------------------------
+# ADMIN USER MANAGEMENT (Admin Only)
+# -------------------------------------------------------------
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "user"
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+@app.get("/api/admin/users")
+def get_admin_users(admin: Dict[str, Any] = Depends(require_admin)):
+    return {"status": "ok", "users": list_all_users()}
+
+
+@app.post("/api/admin/users")
+def add_admin_user(req: CreateUserRequest, admin: Dict[str, Any] = Depends(require_admin)):
+    try:
+        created = create_new_user(req.username, req.password, req.role)
+        return {"status": "ok", "message": f"Pengguna '{created['username']}' berhasil didaftarkan!", "user": created}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/admin/users/{username}")
+def remove_admin_user(username: str, admin: Dict[str, Any] = Depends(require_admin)):
+    try:
+        success = delete_user(username)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Pengguna '{username}' tidak ditemukan.")
+        return {"status": "ok", "message": f"Pengguna '{username}' berhasil dihapus."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/users/{username}/reset-password")
+def reset_admin_user_password(username: str, req: ResetPasswordRequest, admin: Dict[str, Any] = Depends(require_admin)):
+    try:
+        success = reset_user_password(username, req.new_password)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Pengguna '{username}' tidak ditemukan.")
+        return {"status": "ok", "message": f"Password untuk '{username}' berhasil direset. Sesi di perangkat lain otomatis dihentikan."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+

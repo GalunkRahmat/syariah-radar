@@ -3,6 +3,8 @@
     "username": "Galunk",
     "hash": "110227964082dc5595fbc36acc2cb8a2db9517bdc44c19b9eda181b365eb33f9",
     "salt": "4cc266e24a7060045bfccab85ec8a3e0",
-    "created_at": 1792205545.7472546
+    "created_at": 1792205545.7472546,
+    "role": "admin",
+    "last_login": 1792232874.3020399
   }
 }
