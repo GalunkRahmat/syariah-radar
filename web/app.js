@@ -8,6 +8,148 @@ let currentOpenStock = null;
 let chartInstance = null;
 let deferredInstallPrompt = null;
 
+// -------------------------------------------------------------
+// USER AUTHENTICATION & ACCESS CONTROL
+// -------------------------------------------------------------
+async function authFetch(url, options = {}) {
+  const token = localStorage.getItem('syariah_radar_token');
+  options.headers = options.headers || {};
+  if (token) {
+    if (options.headers instanceof Headers) {
+      options.headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      options.headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    showLoginScreen('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
+    throw new Error('Sesi kedaluwarsa. Silakan login kembali.');
+  }
+  return res;
+}
+
+function showLoginScreen(errMsg = '') {
+  const screen = document.getElementById('loginScreen');
+  if (screen) screen.classList.remove('hidden');
+  const alert = document.getElementById('loginErrorAlert');
+  const alertText = document.getElementById('loginErrorText');
+  if (errMsg && alert && alertText) {
+    alertText.innerText = errMsg;
+    alert.classList.remove('hidden');
+  } else if (alert) {
+    alert.classList.add('hidden');
+  }
+  const badge = document.getElementById('userHeaderBadge');
+  if (badge) badge.classList.add('hidden');
+}
+
+function hideLoginScreen() {
+  const screen = document.getElementById('loginScreen');
+  if (screen) screen.classList.add('hidden');
+  const badge = document.getElementById('userHeaderBadge');
+  if (badge) badge.classList.remove('hidden');
+}
+
+function updateUserBadge(username) {
+  const el = document.getElementById('loggedInUserName');
+  if (el) el.innerText = username || 'Galunk';
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('loginPassword');
+  const icon = document.getElementById('pwdToggleIcon');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'fa-regular fa-eye-slash text-xs';
+  } else {
+    input.type = 'password';
+    icon.className = 'fa-regular fa-eye text-xs';
+  }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const usernameInput = document.getElementById('loginUsername');
+  const passwordInput = document.getElementById('loginPassword');
+  const submitBtn = document.getElementById('loginSubmitBtn');
+  const errAlert = document.getElementById('loginErrorAlert');
+  const errText = document.getElementById('loginErrorText');
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Memverifikasi...</span>';
+  errAlert.classList.add('hidden');
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'ok') {
+      localStorage.setItem('syariah_radar_token', data.token);
+      localStorage.setItem('syariah_radar_user', data.username);
+      hideLoginScreen();
+      updateUserBadge(data.username);
+      showToast(`Selamat datang, ${data.username}!`);
+      fetchResults(true);
+    } else {
+      errText.innerText = data.detail || 'Username atau password salah.';
+      errAlert.classList.remove('hidden');
+    }
+  } catch (err) {
+    errText.innerText = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+    errAlert.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i><span>Masuk ke Radar</span>';
+  }
+}
+
+async function handleLogout() {
+  const token = localStorage.getItem('syariah_radar_token');
+  try {
+    if (token) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    }
+  } catch (e) {}
+  localStorage.removeItem('syariah_radar_token');
+  showLoginScreen('Anda telah berhasil keluar.');
+}
+
+async function checkAuthStatus() {
+  const token = localStorage.getItem('syariah_radar_token');
+  const savedUser = localStorage.getItem('syariah_radar_user') || 'Galunk';
+  if (!token) {
+    showLoginScreen();
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/verify', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      hideLoginScreen();
+      updateUserBadge(savedUser);
+      fetchResults();
+    } else {
+      showLoginScreen('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
+    }
+  } catch (e) {
+    hideLoginScreen();
+    updateUserBadge(savedUser);
+    fetchResults();
+  }
+}
+
 let watchlist = [];
 try {
   watchlist = JSON.parse(localStorage.getItem('sharia_radar_watchlist')) || [];
@@ -317,7 +459,7 @@ async function fetchResults(forceRefresh = false) {
 
   try {
     const url = `/api/screener/results?min_score=50${forceRefresh ? '&force_refresh=true' : ''}`;
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (!res.ok) throw new Error("Gagal mengambil data dari server");
 
     const data = await res.json();
@@ -960,7 +1102,7 @@ async function submitAddStock() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
   try {
-    const res = await fetch('/api/sharia-stocks/add', {
+    const res = await authFetch('/api/sharia-stocks/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code })
@@ -1004,7 +1146,7 @@ async function openTelegramModal() {
   document.getElementById('tgAlertMessage').className = 'hidden';
 
   try {
-    const res = await fetch('/api/telegram/config');
+    const res = await authFetch('/api/telegram/config');
     const data = await res.json();
     if (data.configured) {
       document.getElementById('tgChatId').value = data.chat_id || '';
@@ -1032,7 +1174,7 @@ async function saveTelegramConfig() {
   }
 
   try {
-    const res = await fetch('/api/telegram/config', {
+    const res = await authFetch('/api/telegram/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bot_token: token, chat_id: cid, enabled: true })
@@ -1055,7 +1197,7 @@ async function testSendTelegramAlert() {
   alertBox.classList.remove('hidden');
 
   try {
-    const res = await fetch('/api/telegram/send-alert', { method: 'POST' });
+    const res = await authFetch('/api/telegram/send-alert', { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Gagal mengirim tes alert");
 
@@ -1072,7 +1214,7 @@ async function testSendTelegramAlert() {
 // -------------------------------------------------------------
 async function loadStockChart(code) {
   try {
-    const res = await fetch(`/api/stock/${code}`);
+    const res = await authFetch(`/api/stock/${code}`);
     if (!res.ok) return;
     const data = await res.json();
     const history = data.history || [];
@@ -1160,8 +1302,8 @@ async function loadStockChart(code) {
   }
 }
 
-// Initial fetch on page load
+// Initial check on page load
 document.addEventListener('DOMContentLoaded', () => {
   updateWatchlistCounter();
-  fetchResults();
+  checkAuthStatus();
 });

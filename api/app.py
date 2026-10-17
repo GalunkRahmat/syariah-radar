@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 import pandas as pd
 import yfinance as yf
 from pydantic import BaseModel
-from fastapi import FastAPI, Query, HTTPException, Body, Request
+from fastapi import FastAPI, Query, HTTPException, Body, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -23,6 +23,7 @@ from notifier.telegram_alert import (
     send_daily_alert,
     build_alert_message
 )
+from api.auth import authenticate_user, create_session, verify_session, revoke_session
 
 app = FastAPI(
     title="Syariah Swing Radar Pro API",
@@ -120,10 +121,86 @@ def get_system_info():
 
 
 # -------------------------------------------------------------
+# USER AUTHENTICATION & ACCESS CONTROL
+# -------------------------------------------------------------
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    username = authenticate_user(req.username, req.password)
+    if not username:
+        raise HTTPException(
+            status_code=401,
+            detail="Username atau Password salah! Akses ditolak."
+        )
+    token = create_session(username)
+    return {
+        "status": "ok",
+        "token": token,
+        "username": username,
+        "message": f"Login berhasil! Selamat datang, {username}."
+    }
+
+
+@app.get("/api/auth/verify")
+def verify_auth(request: Request):
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    elif "auth_token" in request.cookies:
+        token = request.cookies.get("auth_token", "")
+    elif request.query_params.get("token"):
+        token = request.query_params.get("token", "")
+
+    username = verify_session(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Sesi login tidak valid atau sudah kedaluwarsa.")
+    return {"status": "ok", "authenticated": True, "username": username}
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request):
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    elif "auth_token" in request.cookies:
+        token = request.cookies.get("auth_token", "")
+    elif request.query_params.get("token"):
+        token = request.query_params.get("token", "")
+    if token:
+        revoke_session(token)
+    return {"status": "ok", "message": "Berhasil keluar dari radar."}
+
+
+def require_auth(request: Request) -> str:
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    elif "auth_token" in request.cookies:
+        token = request.cookies.get("auth_token", "")
+    elif request.query_params.get("token"):
+        token = request.query_params.get("token", "")
+
+    username = verify_session(token)
+    if not username:
+        raise HTTPException(
+            status_code=401,
+            detail="Akses ditolak: Anda harus login terlebih dahulu untuk mengakses data radar saham."
+        )
+    return username
+
+
+# -------------------------------------------------------------
 # SHARIA STOCKS & WATCHLIST MANAGEMENT
 # -------------------------------------------------------------
 @app.get("/api/sharia-stocks")
-def get_sharia_stocks():
+def get_sharia_stocks(user: str = Depends(require_auth)):
     return load_sharia_stocks()
 
 
@@ -132,7 +209,7 @@ class AddStockRequest(BaseModel):
 
 
 @app.post("/api/sharia-stocks/add")
-def add_sharia_stock(req: AddStockRequest):
+def add_sharia_stock(req: AddStockRequest, user: str = Depends(require_auth)):
     code = req.code.strip().upper()
     if not code or len(code) > 6:
         raise HTTPException(status_code=400, detail="Kode saham tidak valid.")
@@ -183,7 +260,7 @@ def add_sharia_stock(req: AddStockRequest):
 
 
 @app.delete("/api/sharia-stocks/{code}")
-def delete_sharia_stock(code: str):
+def delete_sharia_stock(code: str, user: str = Depends(require_auth)):
     code = code.strip().upper()
     stocks = load_sharia_stocks()
     new_stocks = [s for s in stocks if s['code'] != code]
@@ -205,7 +282,8 @@ def get_screening_results(
     setup: Optional[str] = Query(None, description="Filter by setup"),
     risk_level: Optional[str] = Query(None, description="Filter by risk"),
     min_score: int = Query(50, description="Minimum composite score"),
-    force_refresh: bool = Query(False, description="Force re-download")
+    force_refresh: bool = Query(False, description="Force re-download"),
+    user: str = Depends(require_auth)
 ):
     market_data = fetch_all_sharia_data(force_refresh=force_refresh)
     if not market_data:
@@ -243,7 +321,7 @@ def get_screening_results(
 
 
 @app.get("/api/stock/{code}")
-def get_stock_detail(code: str):
+def get_stock_detail(code: str, user: str = Depends(require_auth)):
     code = code.upper()
     market_data = fetch_all_sharia_data(force_refresh=False)
     
@@ -300,7 +378,7 @@ class PositionSizeRequest(BaseModel):
 
 
 @app.post("/api/calculator/position-size")
-def calculate_position_size(req: PositionSizeRequest):
+def calculate_position_size(req: PositionSizeRequest, user: str = Depends(require_auth)):
     if req.entry <= req.stop_loss:
         raise HTTPException(status_code=400, detail="Harga Stop Loss harus lebih rendah dari harga Entry.")
 
@@ -340,7 +418,7 @@ def calculate_position_size(req: PositionSizeRequest):
 # TELEGRAM NOTIFICATION APIS
 # -------------------------------------------------------------
 @app.get("/api/telegram/config")
-def get_telegram_config():
+def get_telegram_config(user: str = Depends(require_auth)):
     cfg = load_telegram_config()
     # Mask bot token for security
     masked_token = f"{cfg.get('bot_token', '')[:6]}...{cfg.get('bot_token', '')[-4:]}" if cfg.get('bot_token') else ""
@@ -359,7 +437,7 @@ class TelegramConfigRequest(BaseModel):
 
 
 @app.post("/api/telegram/config")
-def set_telegram_config(req: TelegramConfigRequest):
+def set_telegram_config(req: TelegramConfigRequest, user: str = Depends(require_auth)):
     cfg = {
         "bot_token": req.bot_token.strip(),
         "chat_id": req.chat_id.strip(),
@@ -370,7 +448,7 @@ def set_telegram_config(req: TelegramConfigRequest):
 
 
 @app.post("/api/telegram/send-alert")
-def trigger_telegram_alert():
+def trigger_telegram_alert(user: str = Depends(require_auth)):
     cfg = load_telegram_config()
     if not cfg.get("bot_token") or not cfg.get("chat_id"):
         raise HTTPException(status_code=400, detail="Telegram Bot Token atau Chat ID belum dikonfigurasi.")
