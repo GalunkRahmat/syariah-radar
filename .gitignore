@@ -25,4 +25,5 @@ Thumbs.db
 cloudflared.exe
 data/sessions.json
 data/*.db
+!data/screening_history.db
 
