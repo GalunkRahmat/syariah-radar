@@ -410,4 +410,33 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   background-color: #f3f4f6 !important;
 }
 
+/* Sector Heatmap & Push Notification Styling */
+.heatmap-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.heatmap-tile:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.light-theme #sectorHeatmapContainer .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.light-theme #notificationModal .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+.light-theme #notificationModal .bg-\[\#0e1117\],
+.light-theme #notificationModal .bg-gray-900\/60 {
+  background-color: #f9fafb !important;
+  border-color: #e5e7eb !important;
+  color: #374151 !important;
+}
+
+
 

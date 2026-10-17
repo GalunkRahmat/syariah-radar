@@ -985,6 +985,10 @@ async function fetchResults(forceRefresh = false) {
     updateJournalBadges();
     populateCalculatorDropdown();
     renderCandidates();
+    if (currentMainView === 'heatmap') {
+      renderSectorHeatmap();
+    }
+    checkScheduledMarketAlert();
     loadHistoryDates(); // refresh archive dates list with new snapshot
   } catch (err) {
     console.error("Error fetching results:", err);
@@ -3360,6 +3364,398 @@ function exportJournalCSV() {
   showToast(`✅ File Jurnal (${a.download}) berhasil diunduh!`);
 }
 
+// =============================================================
+// SEKTOR HEATMAP & ROTASI SEKTOR SYARIAH (TREEMAP) ENGINE
+// =============================================================
+let currentMainView = 'list'; // 'list' | 'heatmap'
+
+const SECTOR_ICONS = {
+  'Energy': '⚡',
+  'Basic Materials': '🏭',
+  'Industrials': '🏗️',
+  'Consumer Non-Cyclical': '🛒',
+  'Consumer Cyclical': '🚗',
+  'Healthcare': '💊',
+  'Financials': '🏛️',
+  'Properties & Real Estate': '🏢',
+  'Technology': '💻',
+  'Infrastructures': '📡',
+  'Transportation & Logistics': '📦',
+  'Utilities': '💡'
+};
+
+function switchMainView(mode) {
+  currentMainView = mode;
+  const listBtn = document.getElementById('viewModeListBtn');
+  const heatmapBtn = document.getElementById('viewModeHeatmapBtn');
+  const stockList = document.getElementById('stockList');
+  const filterPills = document.getElementById('filterPillsContainer');
+  const heatmapContainer = document.getElementById('sectorHeatmapContainer');
+
+  if (mode === 'heatmap') {
+    if (listBtn) {
+      listBtn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-gray-400 hover:text-white font-medium flex items-center justify-center gap-1.5 transition';
+    }
+    if (heatmapBtn) {
+      heatmapBtn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-1.5 transition';
+    }
+    if (stockList) stockList.classList.add('hidden');
+    if (filterPills) filterPills.classList.add('hidden');
+    if (heatmapContainer) {
+      heatmapContainer.classList.remove('hidden');
+      renderSectorHeatmap();
+    }
+  } else {
+    if (listBtn) {
+      listBtn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-1.5 transition';
+    }
+    if (heatmapBtn) {
+      heatmapBtn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-gray-400 hover:text-white font-medium flex items-center justify-center gap-1.5 transition';
+    }
+    if (stockList) stockList.classList.remove('hidden');
+    if (filterPills) filterPills.classList.remove('hidden');
+    if (heatmapContainer) heatmapContainer.classList.add('hidden');
+  }
+}
+
+function getHeatmapTileColor(pct) {
+  if (pct >= 5.0) {
+    return {
+      bg: 'bg-[#065f46] text-white',
+      border: 'border-emerald-400/80',
+      textPct: 'text-emerald-200'
+    };
+  } else if (pct >= 2.0) {
+    return {
+      bg: 'bg-[#047857] text-white',
+      border: 'border-emerald-500/70',
+      textPct: 'text-emerald-100'
+    };
+  } else if (pct > 0.0) {
+    return {
+      bg: 'bg-[#064e3b]/90 text-emerald-100',
+      border: 'border-emerald-600/50',
+      textPct: 'text-emerald-300'
+    };
+  } else if (pct === 0.0) {
+    return {
+      bg: 'bg-gray-800 text-gray-300',
+      border: 'border-gray-700',
+      textPct: 'text-gray-400'
+    };
+  } else if (pct >= -2.0) {
+    return {
+      bg: 'bg-[#881337]/80 text-rose-100',
+      border: 'border-rose-700/60',
+      textPct: 'text-rose-300'
+    };
+  } else if (pct >= -5.0) {
+    return {
+      bg: 'bg-[#9f1239] text-white',
+      border: 'border-rose-500/70',
+      textPct: 'text-rose-200'
+    };
+  } else {
+    return {
+      bg: 'bg-[#4c0519] text-white',
+      border: 'border-rose-400',
+      textPct: 'text-rose-100 font-extrabold'
+    };
+  }
+}
+
+function renderSectorHeatmap() {
+  const container = document.getElementById('heatmapGrid');
+  if (!container) return;
+
+  const scope = document.getElementById('heatmapScopeSelect')?.value || 'candidates';
+  const sortBy = document.getElementById('heatmapSortSelect')?.value || 'performance';
+
+  // Choose dataset
+  let sourceStocks = (scope === 'all')
+    ? (allTrackedStocks && allTrackedStocks.length > 0 ? allTrackedStocks : currentCandidates)
+    : currentCandidates;
+
+  if (!sourceStocks || sourceStocks.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-12 text-center text-gray-400 bg-[#161b22] border border-gray-800 rounded-2xl p-6">
+        <i class="fa-solid fa-chart-pie text-2xl text-emerald-400 mb-2"></i>
+        <p class="font-semibold text-sm">Belum ada data saham untuk sektor heatmap.</p>
+        <p class="text-xs text-gray-500 mt-1">Lakukan scan atau pilih cakupan Semua Saham Syariah.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Group by sector
+  const sectorGroups = {};
+  sourceStocks.forEach(s => {
+    const sec = s.sector || 'Lainnya';
+    if (!sectorGroups[sec]) {
+      sectorGroups[sec] = [];
+    }
+    sectorGroups[sec].push(s);
+  });
+
+  // Calculate sector metrics
+  const sectorList = Object.keys(sectorGroups).map(sec => {
+    const list = sectorGroups[sec];
+    const totalPct = list.reduce((acc, curr) => acc + (curr.change_pct || 0), 0);
+    const avgPct = totalPct / list.length;
+    list.sort((a, b) => (b.change_pct || 0) - (a.change_pct || 0));
+    return {
+      name: sec,
+      icon: SECTOR_ICONS[sec] || '📦',
+      stocks: list,
+      avgPct: avgPct
+    };
+  });
+
+  // Sort sectors
+  if (sortBy === 'performance') {
+    sectorList.sort((a, b) => b.avgPct - a.avgPct);
+  } else if (sortBy === 'count') {
+    sectorList.sort((a, b) => b.stocks.length - a.stocks.length);
+  } else if (sortBy === 'name') {
+    sectorList.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const topSectorName = (sortBy === 'performance' && sectorList.length > 0 && sectorList[0].avgPct > 0)
+    ? sectorList[0].name
+    : null;
+
+  // Render HTML
+  container.innerHTML = sectorList.map(sec => {
+    const isTop = (sec.name === topSectorName);
+    const avgFormatted = (sec.avgPct >= 0 ? '+' : '') + sec.avgPct.toFixed(2) + '%';
+    const avgColor = sec.avgPct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+    const tilesHtml = sec.stocks.map(s => {
+      const pct = s.change_pct || 0;
+      const pctFormatted = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+      const colors = getHeatmapTileColor(pct);
+      const isCand = currentCandidates.some(c => c.code === s.code);
+
+      return `
+        <button type="button" onclick="showDetail('${s.code}')" class="heatmap-tile p-2 rounded-xl text-center border ${colors.bg} ${colors.border} flex flex-col justify-between items-center cursor-pointer relative" title="${s.code} - ${s.name || ''} (${pctFormatted})">
+          ${isCand ? '<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" title="Kandidat Radar"></span>' : ''}
+          <span class="font-extrabold text-xs block tracking-wide">${s.code}</span>
+          <span class="text-[10px] font-mono font-bold ${colors.textPct} block">${pctFormatted}</span>
+          <span class="text-[9px] font-mono opacity-85 block">Rp ${formatRupiah(s.price || 0)}</span>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3 md:p-3.5 space-y-2.5 flex flex-col justify-between shadow-sm">
+        <div class="flex items-center justify-between pb-2 border-b border-gray-800/80">
+          <div class="flex items-center gap-1.5 truncate">
+            <span class="text-base">${sec.icon}</span>
+            <span class="font-bold text-white text-xs truncate">${sec.name}</span>
+            ${isTop ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold shrink-0">🔥 Terkuat</span>' : ''}
+          </div>
+          <div class="flex items-center gap-1 text-[11px] font-mono shrink-0">
+            <span class="font-bold ${avgColor}">${avgFormatted}</span>
+            <span class="text-[10px] text-gray-500">(${sec.stocks.length})</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+          ${tilesHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================================
+// WEB PUSH NOTIFICATION & SCHEDULED 16:15 WIB ALERT ENGINE
+// =============================================================
+function openNotificationModal() {
+  const modal = document.getElementById('notificationModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    updatePushStatusUI();
+  }
+}
+
+function closeNotificationModal() {
+  const modal = document.getElementById('notificationModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function updatePushStatusUI() {
+  const badge = document.getElementById('pushStatusBadge');
+  const desc = document.getElementById('pushStatusDesc');
+  const btn = document.getElementById('enablePushBtn');
+  const btnText = document.getElementById('enablePushBtnText');
+  const dot = document.getElementById('notifActiveDot');
+  const mDot = document.getElementById('mobileNotifActiveDot');
+  const toolbarStatus = document.getElementById('notifToolbarStatus');
+  const mMenuStatus = document.getElementById('mobileMenuNotifStatus');
+
+  if (!('Notification' in window)) {
+    if (badge) {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-gray-700 text-gray-400';
+      badge.innerText = 'Tidak Didukung Browser';
+    }
+    if (desc) desc.innerText = 'Peramban ini tidak mendukung Web Notifications API.';
+    if (btn) btn.disabled = true;
+    return;
+  }
+
+  const permission = Notification.permission;
+  if (permission === 'granted') {
+    if (badge) {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      badge.innerText = '🟢 Aktif (Terhubung)';
+    }
+    if (desc) desc.innerText = 'Notifikasi aktif! Anda akan menerima pop-up sinyal swing saham setiap hari bursa jam 16:15 WIB.';
+    if (btn) {
+      btn.disabled = true;
+      btn.className = 'w-full py-2.5 px-3 rounded-xl bg-emerald-600/30 text-emerald-300 font-bold text-xs cursor-default flex items-center justify-center gap-2 border border-emerald-500/30';
+    }
+    if (btnText) btnText.innerText = '✅ Notifikasi Sudah Aktif di Perangkat Ini';
+    if (dot) dot.classList.remove('hidden');
+    if (mDot) mDot.classList.remove('hidden');
+    if (toolbarStatus) toolbarStatus.innerText = 'Notifikasi Aktif';
+    if (mMenuStatus) mMenuStatus.innerHTML = '<span class="text-emerald-400 font-semibold">🟢 Aktif (Jam 16:15 WIB)</span>';
+  } else if (permission === 'denied') {
+    if (badge) {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30';
+      badge.innerText = '🔴 Diblokir Browser';
+    }
+    if (desc) desc.innerText = 'Izin notifikasi diblokir di pengaturan browser. Klik ikon gembok di sebelah URL browser untuk mengizinkan.';
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.innerText = 'Izin Diblokir di Browser';
+    if (dot) dot.classList.add('hidden');
+    if (mDot) mDot.classList.add('hidden');
+  } else {
+    if (badge) {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      badge.innerText = '🟡 Belum Aktif';
+    }
+    if (desc) desc.innerText = 'Aktifkan izin notifikasi di peramban HP Anda agar sinyal saham swing otomatis muncul saat penutupan bursa jam 16:15 WIB.';
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg';
+    }
+    if (btnText) btnText.innerText = 'Aktifkan Notifikasi di Perangkat Ini';
+    if (dot) dot.classList.add('hidden');
+    if (mDot) mDot.classList.add('hidden');
+  }
+}
+
+async function requestPushPermission() {
+  if (!('Notification' in window)) {
+    showToast('⚠️ Peramban Anda tidak mendukung web notification.');
+    return;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    updatePushStatusUI();
+
+    if (result === 'granted') {
+      showToast('✅ Izin notifikasi berhasil diaktifkan!');
+      triggerLocalSystemNotification(
+        '🔔 Notifikasi Syariah Radar Aktif!',
+        'Anda akan menerima peringatan otomatis setiap hari bursa jam 16:15 WIB.'
+      );
+
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            await authFetch('/api/notifications/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                endpoint: sub.endpoint,
+                keys: sub.toJSON().keys,
+                device_id: getOrCreateDeviceId()
+              })
+            });
+          }
+        }
+      } catch (e) {}
+    } else {
+      showToast('⚠️ Izin notifikasi belum diberikan.');
+    }
+  } catch (err) {
+    console.error('Push permission error:', err);
+  }
+}
+
+function triggerLocalSystemNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const options = {
+    body: body,
+    icon: '/static/icon-192.png',
+    badge: '/static/icon-192.png',
+    tag: 'syariah-radar-alert',
+    vibrate: [250, 100, 250],
+    data: { url: '/' }
+  };
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, options);
+    }).catch(() => {
+      try { new Notification(title, options); } catch (e) {}
+    });
+  } else {
+    try { new Notification(title, options); } catch (e) {}
+  }
+}
+
+function sendTestPushNotification() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    requestPushPermission();
+    return;
+  }
+
+  const sampleCount = (currentCandidates && currentCandidates.length > 0) ? currentCandidates.length : 4;
+  const sampleTickers = (currentCandidates && currentCandidates.length > 0)
+    ? currentCandidates.slice(0, 3).map(c => c.code).join(', ')
+    : 'AUTO, BRPT, ACES';
+
+  triggerLocalSystemNotification(
+    '🔔 Radar Saham Syariah (Tes Sinyal)',
+    `${sampleCount} saham syariah lolos kriteria Akumulasi & Low Risk (${sampleTickers}). Ketuk untuk buka radar!`
+  );
+
+  showToast('📲 Notifikasi uji coba telah dikirim ke layar HP Anda!');
+}
+
+function checkScheduledMarketAlert() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) return; // Monday-Friday only
+
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+
+  // Trigger between 16:15 and 23:59 WIB
+  if (hours > 16 || (hours === 16 && minutes >= 15)) {
+    const todayStr = now.toISOString().split('T')[0];
+    const lastNotified = localStorage.getItem('syariah_last_scheduled_alert');
+
+    if (lastNotified !== todayStr && currentCandidates && currentCandidates.length > 0) {
+      localStorage.setItem('syariah_last_scheduled_alert', todayStr);
+      const tickers = currentCandidates.slice(0, 4).map(c => c.code).join(', ');
+      triggerLocalSystemNotification(
+        `🔔 Sinyal Swing Saham Syariah (${todayStr})`,
+        `${currentCandidates.length} saham lolos kriteria Akumulasi & Low Risk hari ini (${tickers}). Ketuk untuk analisa sekarang!`
+      );
+    }
+  }
+}
+
 // Initial check on page load
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
@@ -3368,11 +3764,15 @@ document.addEventListener('DOMContentLoaded', () => {
   updateWatchlistCounter();
   updateJournalBadges();
   checkAuthStatus();
+  updatePushStatusUI();
+  checkScheduledMarketAlert();
+  setInterval(checkScheduledMarketAlert, 60000);
 });
 
 window.addEventListener('load', () => {
   sanitizeSearchInput();
   updateJournalBadges();
+  updatePushStatusUI();
   setTimeout(sanitizeSearchInput, 150);
   setTimeout(sanitizeSearchInput, 500);
 });

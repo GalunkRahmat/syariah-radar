@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.8.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.9.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.8.0') {
+          if (key !== 'syariah-radar-v1.9.0') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -213,6 +213,12 @@
           <span id="themeToggleText" class="text-gray-200">Terang</span>
         </button>
 
+        <!-- NOTIFIKASI HP BUTTON -->
+        <button id="notifBellBtn" onclick="openNotificationModal()" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP (Jam 16:15 WIB)">
+          <i class="fa-solid fa-bell text-xs"></i>
+          <span id="notifActiveDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+        </button>
+
         <!-- USER PROFILE BADGE & LOGOUT -->
         <div id="userHeaderBadge" class="hidden flex items-center gap-1.5 pl-2 border-l border-gray-700">
           <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-800/80 border border-gray-700/60 text-xs">
@@ -227,6 +233,10 @@
 
       <!-- MOBILE TOP ACTION BUTTONS (shown on mobile <md) -->
       <div class="flex md:hidden items-center gap-1.5">
+        <button id="mobileNotifBtn" onclick="openNotificationModal()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP">
+          <i class="fa-solid fa-bell text-xs"></i>
+          <span id="mobileNotifActiveDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+        </button>
         <button id="mobileThemeToggleBtn" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-gray-800 text-amber-400 hover:text-amber-300 flex items-center justify-center border border-gray-700 transition" title="Ganti Mode Terang / Gelap">
           <i id="mobileThemeToggleIcon" class="fa-solid fa-sun text-xs text-amber-400"></i>
         </button>
@@ -309,8 +319,30 @@
       </div>
     </div>
 
+    <!-- VIEW MODE SWITCHER: DAFTAR KARTU vs SEKTOR HEATMAP -->
+    <div class="flex items-center justify-between gap-2 pt-0.5">
+      <div class="flex items-center gap-1 p-1 bg-[#161b22] border border-gray-800 rounded-xl text-xs w-full sm:w-auto shadow-sm">
+        <button id="viewModeListBtn" onclick="switchMainView('list')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-1.5 transition">
+          <i class="fa-solid fa-list-ul"></i>
+          <span>Daftar Kartu</span>
+        </button>
+        <button id="viewModeHeatmapBtn" onclick="switchMainView('heatmap')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-gray-400 hover:text-white font-medium flex items-center justify-center gap-1.5 transition">
+          <i class="fa-solid fa-cubes-stacked"></i>
+          <span>Sektor Heatmap</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-semibold hidden xs:inline">Treemap</span>
+        </button>
+      </div>
+
+      <div class="hidden sm:flex items-center gap-2 text-xs">
+        <button onclick="openNotificationModal()" class="px-2.5 py-1.5 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-emerald-400 border border-gray-700 flex items-center gap-1.5 transition shadow-sm" title="Pengaturan Notifikasi HP">
+          <i class="fa-solid fa-bell text-emerald-400"></i>
+          <span id="notifToolbarStatus">Notifikasi HP (16:15)</span>
+        </button>
+      </div>
+    </div>
+
     <!-- FILTER TABS / PILLS (SWIPABLE ON MOBILE ALA STOCKBIT, WRAP ON DESKTOP) -->
-    <div class="flex items-center gap-1.5 text-xs overflow-x-auto scrollbar-none py-1 -mx-3 px-3 md:mx-0 md:px-0 md:flex-wrap">
+    <div id="filterPillsContainer" class="flex items-center gap-1.5 text-xs overflow-x-auto scrollbar-none py-1 -mx-3 px-3 md:mx-0 md:px-0 md:flex-wrap">
       <button onclick="setFilter('WATCHLIST')" id="filter-WATCHLIST" class="filter-pill border-amber-500/40 text-amber-300 font-semibold flex items-center gap-1.5 shrink-0">
         <i class="fa-solid fa-star text-amber-400"></i>
         <span>Watchlist (<span id="watchlistCount">0</span>)</span>
@@ -342,6 +374,54 @@
       <button onclick="setFilter('OVERSOLD_REBOUND')" id="filter-OVERSOLD_REBOUND" class="filter-pill shrink-0">
         ⚡ Oversold Rebound
       </button>
+    </div>
+
+    <!-- SEKTOR HEATMAP & TREEMAP CONTAINER (TOGGLEABLE) -->
+    <div id="sectorHeatmapContainer" class="hidden space-y-3">
+      <!-- Heatmap Control Bar -->
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3 md:p-4 space-y-3 shadow-md">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-white text-xs md:text-sm flex items-center gap-2">
+              <i class="fa-solid fa-cubes-stacked text-emerald-400"></i>
+              Sektor Heatmap & Rotasi Saham Syariah (Treemap)
+            </h3>
+            <p class="text-[11px] text-gray-400">Peta visual kekuatan sektoral & pergerakan harga saham syariah hari ini.</p>
+          </div>
+          
+          <div class="flex items-center gap-1.5 text-xs">
+            <select id="heatmapScopeSelect" onchange="renderSectorHeatmap()" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
+              <option value="candidates" selected>Hanya Kandidat Radar</option>
+              <option value="all">Semua Saham Syariah (Universe)</option>
+            </select>
+            <select id="heatmapSortSelect" onchange="renderSectorHeatmap()" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
+              <option value="performance" selected>Kinerja Tertinggi (Top Gainer)</option>
+              <option value="count">Jumlah Saham</option>
+              <option value="name">Nama Sektor (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Heatmap Color Scale Legend -->
+        <div class="flex items-center justify-between flex-wrap gap-2 text-[10px] text-gray-400 border-t border-gray-800/80 pt-2">
+          <span class="font-mono text-gray-400">Skala Perubahan:</span>
+          <div class="flex items-center gap-1 font-mono text-[9px]">
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#7f1d1d]">&le; -5%</span>
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#991b1b]">-3%</span>
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#b91c1c]">-1%</span>
+            <span class="px-1.5 py-0.5 rounded text-gray-300 font-bold bg-[#374151]">0%</span>
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#059669]">+1%</span>
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#047857]">+3%</span>
+            <span class="px-1.5 py-0.5 rounded text-white font-bold bg-[#065f46]">&ge; +5%</span>
+          </div>
+          <span class="italic text-[10px] text-gray-500">💡 Sentuh/Klik kotak saham untuk buka Trading Plan & Candlestick</span>
+        </div>
+      </div>
+
+      <!-- Sector Grid / Treemap Blocks -->
+      <div id="heatmapGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Rendered dynamically -->
+      </div>
     </div>
 
     <!-- STOCK CARDS CONTAINER -->
@@ -1176,6 +1256,32 @@
           <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
         </button>
 
+        <button onclick="closeMobileMenuModal(); switchMainView('heatmap');" class="w-full p-3 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-gray-700 flex items-center justify-between transition">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-cubes-stacked"></i>
+            </div>
+            <div class="text-left">
+              <span class="font-semibold text-white block">Sektor Heatmap & Treemap</span>
+              <span class="text-[11px] text-gray-400">Peta visual kekuatan sektoral & pergerakan harga</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
+        </button>
+
+        <button onclick="closeMobileMenuModal(); openNotificationModal();" class="w-full p-3 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-gray-700 flex items-center justify-between transition">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <div class="text-left">
+              <span class="font-semibold text-white block">Notifikasi Sinyal HP (Jam 16:15)</span>
+              <span id="mobileMenuNotifStatus" class="text-[11px] text-gray-400">Peringatan otomatis sinyal swing di layar HP</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
+        </button>
+
         <button onclick="closeMobileMenuModal(); openMobileHistoryModal();" class="w-full p-3 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-gray-700 flex items-center justify-between transition">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
@@ -1255,6 +1361,65 @@
         </button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- 0. MODAL NOTIFIKASI PUSH HP (JAM 16:15 WIB)                   -->
+  <!-- ============================================================= -->
+  <div id="notificationModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 md:p-4">
+    <div class="bg-[#161b22] border border-gray-700 w-full max-w-md rounded-2xl md:rounded-3xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center border border-emerald-500/30 text-base shadow-sm">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Notifikasi Sinyal HP</h3>
+            <p class="text-[11px] text-gray-400">Peringatan otomatis jam 16:15 WIB di layar HP</p>
+          </div>
+        </div>
+        <button onclick="closeNotificationModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- STATUS PERMISSION -->
+      <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2.5 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-400 font-medium">Status Notifikasi HP:</span>
+          <span id="pushStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Memeriksa...</span>
+        </div>
+        <p id="pushStatusDesc" class="text-[11px] text-gray-400">
+          Aktifkan izin notifikasi di peramban HP Anda agar sinyal saham swing otomatis muncul saat penutupan bursa.
+        </p>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="space-y-2">
+        <button id="enablePushBtn" onclick="requestPushPermission()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg">
+          <i class="fa-solid fa-bell"></i>
+          <span id="enablePushBtnText">Aktifkan Notifikasi di Perangkat Ini</span>
+        </button>
+
+        <button onclick="sendTestPushNotification()" class="w-full py-2.5 px-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>⚡ Kirim Notifikasi Uji Coba Sekarang</span>
+        </button>
+      </div>
+
+      <!-- SCHEDULE INFO -->
+      <div class="p-3 bg-gray-900/60 border border-gray-800 rounded-xl text-[11px] text-gray-400 space-y-1.5">
+        <p class="font-semibold text-gray-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-clock text-amber-400"></i>
+          Jadwal Notifikasi Otomatis:
+        </p>
+        <p class="text-gray-400 leading-relaxed text-[10px] sm:text-[11px]">
+          • <b>Pukul 16:15 WIB (Senin – Jumat):</b> Sistem otomatis memindai seluruh saham syariah setelah bursa BEI tutup.<br>
+          • Notifikasi pop-up muncul di bar atas HP Anda jika terdeteksi minimal 1 saham syariah berkategori <b>Akumulasi Bandar</b> atau <b>Grade A+</b>.<br>
+          • 100% Gratis via Web Push PWA (tanpa biaya SMS/pulsa).
+        </p>
+      </div>
     </div>
   </div>
 
@@ -1531,6 +1696,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.8.0"></script>
+  <script src="/static/app.js?v=1.9.0"></script>
 </body>
 </html>

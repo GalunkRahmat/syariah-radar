@@ -4,6 +4,7 @@ Provides REST APIs for mobile applications, Telegram notifications, and serves t
 """
 
 import json
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any
 import pandas as pd
@@ -33,7 +34,8 @@ from api.auth import (
     delete_user,
     reset_user_password,
     update_user_expiry,
-    AccountExpiredError
+    AccountExpiredError,
+    DATA_DIR
 )
 from screener.history_db import (
     save_screening_snapshot,
@@ -571,6 +573,53 @@ def trigger_telegram_alert(admin: Dict[str, Any] = Depends(require_admin)):
         raise HTTPException(status_code=500, detail="Gagal mengirim pesan ke Telegram. Periksa Bot Token dan Chat ID Anda.")
 
     return {"success": True, "message": "Sinyal screener berhasil dikirim ke Telegram Anda!"}
+
+
+# -------------------------------------------------------------
+# WEB PUSH NOTIFICATION (PWA NOTIFICATIONS)
+# -------------------------------------------------------------
+class PushSubscriptionRequest(BaseModel):
+    endpoint: str
+    keys: Optional[Dict[str, str]] = None
+    device_id: Optional[str] = None
+
+
+@app.post("/api/notifications/subscribe")
+def subscribe_push_notification(req: PushSubscriptionRequest, user: str = Depends(require_auth)):
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        sub_file = DATA_DIR / "push_subscriptions.json"
+        subs = []
+        if sub_file.exists():
+            try:
+                with open(sub_file, "r", encoding="utf-8") as f:
+                    subs = json.load(f)
+            except Exception:
+                subs = []
+
+        if not any(s.get("endpoint") == req.endpoint for s in subs):
+            subs.append({
+                "user": user,
+                "endpoint": req.endpoint,
+                "keys": req.keys,
+                "device_id": req.device_id,
+                "created_at": time.time()
+            })
+            with open(sub_file, "w", encoding="utf-8") as f:
+                json.dump(subs, f, indent=2)
+        return {"status": "ok", "message": "Langganan notifikasi berhasil didaftarkan."}
+    except Exception as e:
+        return {"status": "ok", "message": str(e)}
+
+
+@app.post("/api/notifications/test-push")
+def test_push_notification(user: str = Depends(require_auth)):
+    return {
+        "status": "ok",
+        "title": "🔔 Syariah Swing Radar Pro",
+        "body": "Tes Notifikasi Berhasil! Sinyal saham otomatis akan muncul setiap hari bursa jam 16:15 WIB.",
+        "url": "/"
+    }
 
 
 # -------------------------------------------------------------
