@@ -899,6 +899,7 @@ async function fetchResults(forceRefresh = false) {
     document.getElementById('statAccumulation').innerText = accumCount;
 
     updateWatchlistCounter();
+    updateJournalBadges();
     populateCalculatorDropdown();
     renderCandidates();
     loadHistoryDates(); // refresh archive dates list with new snapshot
@@ -1178,7 +1179,10 @@ function renderCandidates() {
             <p class="text-xs text-gray-400 truncate">${c.name} • <span class="text-gray-500">${c.sector}</span></p>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-8 h-8 rounded-xl bg-gray-800/80 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/60" title="Catat ke Jurnal Trading (Simulasi Beli)">
+              <i class="fa-solid fa-book-bookmark text-xs"></i>
+            </button>
             <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
               <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
             </button>
@@ -1800,7 +1804,7 @@ async function loadStockChart(code) {
 // STOCKBIT-STYLE MOBILE BOTTOM NAVIGATION & ACTIONS
 // -------------------------------------------------------------
 function updateMobileNavActive(activeTab) {
-  const tabs = ['Radar', 'Watchlist', 'History', 'Calc', 'Menu'];
+  const tabs = ['Radar', 'Watchlist', 'Journal', 'Calc', 'Menu'];
   tabs.forEach(t => {
     const el = document.getElementById(`mobileNav${t}`);
     if (el) {
@@ -1818,22 +1822,31 @@ function switchMobileTab(tab) {
   if (tab === 'radar') {
     closeMobileHistoryModal();
     closeMobileMenuModal();
+    closeJournalModal();
     setFilter('ALL');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } else if (tab === 'watchlist') {
     closeMobileHistoryModal();
     closeMobileMenuModal();
+    closeJournalModal();
     setFilter('WATCHLIST');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'journal') {
+    closeMobileHistoryModal();
+    closeMobileMenuModal();
+    openJournalModal();
   } else if (tab === 'history') {
     closeMobileMenuModal();
+    closeJournalModal();
     openMobileHistoryModal();
   } else if (tab === 'calc') {
     closeMobileHistoryModal();
     closeMobileMenuModal();
+    closeJournalModal();
     openStandaloneCalcModal();
   } else if (tab === 'menu') {
     closeMobileHistoryModal();
+    closeJournalModal();
     openMobileMenuModal();
   }
 }
@@ -2102,17 +2115,820 @@ async function deleteUserAccount(username) {
   }
 }
 
+// =============================================================
+// TRADING JOURNAL & PORTFOLIO SIMULATOR ENGINE
+// =============================================================
+let currentJournalFilter = 'ALL';
+let currentExitTradeId = null;
+
+function getJournalUserKey() {
+  const u = localStorage.getItem('syariah_radar_user') || 'default';
+  return u.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+}
+
+function getJournalTrades() {
+  const key = 'syariah_radar_journal_' + getJournalUserKey();
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn("Failed to load journal trades:", e);
+    return [];
+  }
+}
+
+function saveJournalTrades(trades) {
+  const key = 'syariah_radar_journal_' + getJournalUserKey();
+  try {
+    localStorage.setItem(key, JSON.stringify(trades));
+    updateJournalBadges();
+  } catch (e) {
+    console.error("Failed to save journal trades:", e);
+  }
+}
+
+function updateJournalBadges() {
+  const trades = getJournalTrades();
+  const openCount = trades.filter(t => t.status === 'OPEN').length;
+
+  const desktopBadge = document.getElementById('desktopJournalBadge');
+  if (desktopBadge) {
+    if (openCount > 0) {
+      desktopBadge.innerText = openCount;
+      desktopBadge.classList.remove('hidden');
+    } else {
+      desktopBadge.classList.add('hidden');
+    }
+  }
+
+  const mobileBadge = document.getElementById('mobileJournalBadge');
+  if (mobileBadge) {
+    if (openCount > 0) {
+      mobileBadge.innerText = openCount;
+      mobileBadge.classList.remove('hidden');
+    } else {
+      mobileBadge.classList.add('hidden');
+    }
+  }
+}
+
+function findStockLatestPrice(code) {
+  if (!code) return null;
+  const upper = code.toUpperCase();
+  const inCand = currentCandidates.find(c => c.code && c.code.toUpperCase() === upper);
+  if (inCand && inCand.price) return inCand.price;
+  const inTracked = allTrackedStocks.find(s => s.code && s.code.toUpperCase() === upper);
+  if (inTracked && inTracked.price) return inTracked.price;
+  return null;
+}
+
+function openJournalModal(filter = 'ALL') {
+  currentJournalFilter = filter;
+  const modal = document.getElementById('journalModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    setJournalFilter(currentJournalFilter);
+  }
+}
+
+function closeJournalModal() {
+  const modal = document.getElementById('journalModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    updateMobileNavActive(currentFilter === 'WATCHLIST' ? 'Watchlist' : 'Radar');
+  }
+}
+
+function setJournalFilter(filter) {
+  currentJournalFilter = filter;
+  document.querySelectorAll('.journal-pill').forEach(btn => {
+    btn.className = 'journal-pill px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:text-white border border-gray-700';
+  });
+  const activeBtn = document.getElementById('jfilter-' + filter);
+  if (activeBtn) {
+    activeBtn.className = 'journal-pill px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+  }
+  renderJournalView();
+}
+
+function renderJournalView() {
+  const container = document.getElementById('journalTradesList');
+  if (!container) return;
+
+  const trades = getJournalTrades();
+
+  // Sort trades: OPEN trades first (newest to oldest), then CLOSED trades (newest to oldest)
+  trades.sort((a, b) => {
+    if (a.status === 'OPEN' && b.status !== 'OPEN') return -1;
+    if (a.status !== 'OPEN' && b.status === 'OPEN') return 1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+
+  // Calculate Metrics
+  let activeCapital = 0;
+  let activeCount = 0;
+  let totalFloatingPnL = 0;
+  let totalRealizedPnL = 0;
+  let closedWins = 0;
+  let closedLosses = 0;
+  let totalWinPctSum = 0;
+  let totalLossPctSum = 0;
+
+  trades.forEach(t => {
+    const latestPrice = findStockLatestPrice(t.code) || t.entryPrice;
+    const currentPrice = (t.status === 'OPEN') ? latestPrice : (t.exitPrice || t.entryPrice);
+    const shares = t.lots * 100;
+    const capital = t.entryPrice * shares;
+
+    if (t.status === 'OPEN') {
+      activeCapital += capital;
+      activeCount++;
+      const floating = (currentPrice - t.entryPrice) * shares;
+      totalFloatingPnL += floating;
+    } else {
+      const pnl = Number(t.realizedPnl || 0);
+      totalRealizedPnL += pnl;
+      const pnlPct = Number(t.realizedPnlPct || 0);
+      if (pnl >= 0) {
+        closedWins++;
+        totalWinPctSum += pnlPct;
+      } else {
+        closedLosses++;
+        totalLossPctSum += Math.abs(pnlPct);
+      }
+    }
+  });
+
+  const totalClosed = closedWins + closedLosses;
+  const winRate = totalClosed > 0 ? ((closedWins / totalClosed) * 100).toFixed(1) : '0.0';
+  const floatingPct = activeCapital > 0 ? ((totalFloatingPnL / activeCapital) * 100).toFixed(2) : '0.00';
+
+  // Average Win vs Average Loss for Risk-Reward
+  const avgWin = closedWins > 0 ? (totalWinPctSum / closedWins) : 0;
+  const avgLoss = closedLosses > 0 ? (totalLossPctSum / closedLosses) : 0;
+  const rrRatioStr = (avgLoss > 0) ? `Avg Win +${avgWin.toFixed(1)}% vs -${avgLoss.toFixed(1)}% (1 : ${(avgWin/avgLoss).toFixed(1)})` : `${closedWins} Win / ${closedLosses} Loss`;
+
+  // Update KPI UI
+  document.getElementById('journalStatActiveCapital').innerText = formatIDR(activeCapital);
+  document.getElementById('journalStatActiveCount').innerText = `${activeCount} Saham Berjalan`;
+
+  const floatEl = document.getElementById('journalStatFloatingPnL');
+  const floatPctEl = document.getElementById('journalStatFloatingPct');
+  if (totalFloatingPnL > 0) {
+    floatEl.className = 'text-xs sm:text-sm font-bold text-emerald-400 font-mono block';
+    floatEl.innerText = `+${formatIDR(totalFloatingPnL)}`;
+    floatPctEl.className = 'text-[10px] text-emerald-400 font-semibold block';
+    floatPctEl.innerText = `+${floatingPct}%`;
+  } else if (totalFloatingPnL < 0) {
+    floatEl.className = 'text-xs sm:text-sm font-bold text-red-400 font-mono block';
+    floatEl.innerText = formatIDR(totalFloatingPnL);
+    floatPctEl.className = 'text-[10px] text-red-400 font-semibold block';
+    floatPctEl.innerText = `${floatingPct}%`;
+  } else {
+    floatEl.className = 'text-xs sm:text-sm font-bold text-gray-300 font-mono block';
+    floatEl.innerText = 'Rp 0';
+    floatPctEl.className = 'text-[10px] text-gray-500 block';
+    floatPctEl.innerText = '0.00%';
+  }
+
+  const realEl = document.getElementById('journalStatRealizedPnL');
+  const realCountEl = document.getElementById('journalStatClosedCount');
+  if (totalRealizedPnL > 0) {
+    realEl.className = 'text-xs sm:text-sm font-bold text-emerald-400 font-mono block';
+    realEl.innerText = `+${formatIDR(totalRealizedPnL)}`;
+  } else if (totalRealizedPnL < 0) {
+    realEl.className = 'text-xs sm:text-sm font-bold text-red-400 font-mono block';
+    realEl.innerText = formatIDR(totalRealizedPnL);
+  } else {
+    realEl.className = 'text-xs sm:text-sm font-bold text-gray-300 font-mono block';
+    realEl.innerText = 'Rp 0';
+  }
+  realCountEl.innerText = `${totalClosed} Trade Selesai`;
+
+  document.getElementById('journalStatWinRate').innerText = `${winRate}%`;
+  document.getElementById('journalStatRatio').innerText = rrRatioStr;
+
+  // Update Filter Counters
+  const countAll = trades.length;
+  const countOpen = trades.filter(t => t.status === 'OPEN').length;
+  const countClosed = totalClosed;
+  const countWin = closedWins;
+  const countLoss = closedLosses;
+
+  document.getElementById('jcount-ALL').innerText = countAll;
+  document.getElementById('jcount-OPEN').innerText = countOpen;
+  document.getElementById('jcount-CLOSED').innerText = countClosed;
+  document.getElementById('jcount-WIN').innerText = countWin;
+  document.getElementById('jcount-LOSS').innerText = countLoss;
+
+  // Filter Trades
+  let filtered = trades;
+  if (currentJournalFilter === 'OPEN') {
+    filtered = filtered.filter(t => t.status === 'OPEN');
+  } else if (currentJournalFilter === 'CLOSED') {
+    filtered = filtered.filter(t => t.status !== 'OPEN');
+  } else if (currentJournalFilter === 'WIN') {
+    filtered = filtered.filter(t => t.status !== 'OPEN' && Number(t.realizedPnl || 0) >= 0);
+  } else if (currentJournalFilter === 'LOSS') {
+    filtered = filtered.filter(t => t.status !== 'OPEN' && Number(t.realizedPnl || 0) < 0);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-12 bg-[#0e1117] border border-gray-800 rounded-2xl p-6 text-gray-400 space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto text-xl border border-emerald-500/20">
+          <i class="fa-solid fa-book-open"></i>
+        </div>
+        <h4 class="text-sm font-bold text-white">Belum Ada Catatan Transaksi di Kategori Ini</h4>
+        <p class="text-xs text-gray-500 max-w-sm mx-auto">
+          Catat rencana transaksi saham syariah Anda untuk mengevaluasi akurasi, kedisiplinan cut loss, dan pencapaian target profit.
+        </p>
+        <button onclick="openTradeEntryModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-2 shadow">
+          <i class="fa-solid fa-plus"></i>
+          <span>Catat Transaksi Sekarang</span>
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(t => {
+    const isClosed = (t.status !== 'OPEN');
+    const latestPrice = findStockLatestPrice(t.code) || t.entryPrice;
+    const currentPrice = isClosed ? (t.exitPrice || t.entryPrice) : latestPrice;
+    const shares = t.lots * 100;
+    const capital = t.entryPrice * shares;
+
+    let pnlAmount = 0;
+    let pnlPct = 0;
+    let statusBadge = '';
+
+    if (!isClosed) {
+      pnlAmount = (currentPrice - t.entryPrice) * shares;
+      pnlPct = ((currentPrice - t.entryPrice) / t.entryPrice) * 100;
+
+      // Detection of TP1, TP2, SL
+      if (t.tp2 && currentPrice >= t.tp2) {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><i class="fa-solid fa-rocket text-purple-400"></i> Target TP2 Tercapai!</span>';
+      } else if (t.tp1 && currentPrice >= t.tp1) {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-bullseye text-emerald-400"></i> Target TP1 Tercapai!</span>';
+      } else if (t.stopLoss && currentPrice <= t.stopLoss) {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation text-red-400"></i> Kena Stop Loss!</span>';
+      } else if (pnlAmount > 0) {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1"><i class="fa-solid fa-arrow-trend-up text-emerald-400"></i> Floating Profit</span>';
+      } else if (pnlAmount < 0) {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1"><i class="fa-solid fa-arrow-trend-down text-red-400"></i> Floating Loss</span>';
+      } else {
+        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-300 border border-gray-700 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px] text-blue-400"></i> Posisi Aktif (Hold)</span>';
+      }
+    } else {
+      pnlAmount = Number(t.realizedPnl || 0);
+      pnlPct = Number(t.realizedPnlPct || 0);
+      if (pnlAmount >= 0) {
+        statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-400"></i> SELESAI: WIN (+${pnlPct.toFixed(1)}%)</span>`;
+      } else {
+        statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1"><i class="fa-solid fa-shield-xmark text-red-400"></i> SELESAI: CUT LOSS (${pnlPct.toFixed(1)}%)</span>`;
+      }
+    }
+
+    const pnlSign = pnlAmount >= 0 ? '+' : '';
+    const pnlColorClass = pnlAmount > 0 ? 'text-emerald-400' : (pnlAmount < 0 ? 'text-red-400' : 'text-gray-300');
+    const pnlBgClass = pnlAmount > 0 ? 'bg-emerald-500/10 border-emerald-500/20' : (pnlAmount < 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-gray-800/40 border-gray-700');
+
+    return `
+      <div class="journal-trade-card bg-[#0e1117] border border-gray-800 rounded-2xl p-3.5 space-y-3 shadow-sm transition">
+        
+        <!-- CARD HEADER -->
+        <div class="flex items-start justify-between gap-2 flex-wrap">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-base font-extrabold text-white tracking-wide">${t.code}</span>
+              ${statusBadge}
+              <span class="text-[10px] text-gray-500">• Beli: ${t.entryDate || '-'}</span>
+              ${isClosed ? `<span class="text-[10px] text-gray-500">• Jual: ${t.exitDate || '-'}</span>` : ''}
+            </div>
+            <p class="text-xs text-gray-400">${t.name || 'Saham Syariah'}</p>
+          </div>
+
+          <!-- PNL BADGE -->
+          <div class="text-right px-2.5 py-1 rounded-xl border ${pnlBgClass}">
+            <span class="text-[10px] text-gray-400 block">${isClosed ? 'Realized P&L' : 'Floating P&L'}</span>
+            <span class="text-xs md:text-sm font-bold font-mono ${pnlColorClass} block">
+              ${pnlSign}${formatIDR(pnlAmount)}
+            </span>
+            <span class="text-[10px] font-bold font-mono ${pnlColorClass} block">
+              (${pnlSign}${pnlPct.toFixed(2)}%)
+            </span>
+          </div>
+        </div>
+
+        <!-- DETAILS GRID -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#161b22] p-2.5 rounded-xl border border-gray-800/80 text-[11px] font-mono">
+          <div>
+            <span class="text-[10px] text-gray-500 block">Harga Beli (Entry)</span>
+            <span class="font-bold text-white">${formatIDR(t.entryPrice)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-gray-500 block">Jumlah Posisi</span>
+            <span class="font-bold text-white">${t.lots} Lot (${shares.toLocaleString('id-ID')} Lbr)</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-gray-500 block">Modal Pembelian</span>
+            <span class="font-bold text-white">${formatIDR(capital)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-gray-500 block">${isClosed ? 'Harga Realisasi Jual' : 'Harga Pasar Terkini'}</span>
+            <span class="font-bold ${isClosed ? 'text-amber-300' : 'text-blue-300'}">${formatIDR(currentPrice)}</span>
+          </div>
+        </div>
+
+        <!-- TARGET TRADING PLAN STRIP -->
+        <div class="flex items-center justify-between text-[10px] md:text-[11px] px-2 py-1.5 rounded-lg bg-gray-900/60 border border-gray-800 text-gray-400 flex-wrap gap-1">
+          <span class="flex items-center gap-1">
+            <span class="text-red-400 font-semibold">Stop Loss:</span>
+            <span class="text-white font-mono">${t.stopLoss ? formatIDR(t.stopLoss) : '-'}</span>
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="text-emerald-400 font-semibold">Target TP1:</span>
+            <span class="text-white font-mono">${t.tp1 ? formatIDR(t.tp1) : '-'}</span>
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="text-emerald-400 font-semibold">Target TP2:</span>
+            <span class="text-white font-mono">${t.tp2 ? formatIDR(t.tp2) : '-'}</span>
+          </span>
+        </div>
+
+        <!-- NOTES ROW -->
+        ${t.notes ? `
+          <div class="text-[11px] text-gray-400 italic bg-gray-900/40 px-2.5 py-1 rounded-lg border border-gray-800/60 flex items-center gap-1.5">
+            <i class="fa-regular fa-comment-dots text-emerald-400"></i>
+            <span>${t.notes}</span>
+          </div>
+        ` : ''}
+
+        <!-- ACTIONS ROW -->
+        <div class="flex items-center justify-between pt-1 border-t border-gray-800/80 text-xs">
+          <div>
+            ${!isClosed ? `
+              <button onclick="openTradeExitModal('${t.id}')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                <span>Tutup / Jual Posisi</span>
+              </button>
+            ` : `
+              <button onclick="reopenTrade('${t.id}')" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 transition flex items-center gap-1">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Buka Kembali Posisi</span>
+              </button>
+            `}
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button onclick="openTradeEntryModal('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs border border-gray-700 transition" title="Edit Posisi">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="deleteTrade('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 text-xs border border-gray-700 transition" title="Hapus Posisi">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    `;
+  }).join('');
+}
+
+function openTradeEntryModal(tradeId = null) {
+  const modal = document.getElementById('tradeEntryModal');
+  if (!modal) return;
+
+  const form = document.getElementById('tradeEntryForm');
+  if (form) form.reset();
+
+  document.getElementById('entryTradeId').value = tradeId || '';
+  const title = document.getElementById('tradeEntryModalTitle');
+  const btnText = document.getElementById('entrySubmitBtnText');
+
+  if (tradeId) {
+    const trades = getJournalTrades();
+    const t = trades.find(item => item.id === tradeId);
+    if (t) {
+      document.getElementById('entryTicker').value = t.code;
+      document.getElementById('entryName').value = t.name || '';
+      document.getElementById('entryDate').value = t.entryDate || '';
+      document.getElementById('entryPrice').value = t.entryPrice || '';
+      document.getElementById('entryLots').value = t.lots || 1;
+      document.getElementById('entrySL').value = t.stopLoss || '';
+      document.getElementById('entryTP1').value = t.tp1 || '';
+      document.getElementById('entryTP2').value = t.tp2 || '';
+      document.getElementById('entryNotes').value = t.notes || '';
+      calcEntryModalCapital();
+
+      if (title) title.innerText = `Edit Posisi: ${t.code}`;
+      if (btnText) btnText.innerText = `Perbarui Posisi ${t.code}`;
+    }
+  } else {
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('entryLots').value = 10;
+    document.getElementById('entryCapitalAllocated').value = 'Rp 0';
+    if (title) title.innerText = 'Catat Posisi Beli Baru';
+    if (btnText) btnText.innerText = 'Simpan ke Jurnal Trading';
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeTradeEntryModal() {
+  const modal = document.getElementById('tradeEntryModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openAddTradeModalFromStock(stock) {
+  const s = stock || currentOpenStock;
+  if (!s) return;
+  closeModal(); // close detail modal if open
+  openTradeEntryModal();
+
+  document.getElementById('entryTradeId').value = '';
+  document.getElementById('entryTicker').value = s.code;
+  document.getElementById('entryName').value = s.name || '';
+  document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+  const plan = s.trading_plan || {};
+  const entryPrice = plan.entry || s.price;
+  document.getElementById('entryPrice').value = entryPrice;
+  document.getElementById('entrySL').value = plan.stop_loss || '';
+  document.getElementById('entryTP1').value = plan.tp1 || '';
+  document.getElementById('entryTP2').value = plan.tp2 || '';
+
+  // Get lots from modal calculator if set, otherwise default 10
+  const calcLotsEl = document.getElementById('calcLots');
+  let recLots = 10;
+  if (calcLotsEl && calcLotsEl.innerText) {
+    const parsed = parseInt(calcLotsEl.innerText.replace(/[^0-9]/g, ''));
+    if (!isNaN(parsed) && parsed > 0) recLots = parsed;
+  }
+  document.getElementById('entryLots').value = recLots;
+  calcEntryModalCapital();
+
+  const setupText = s.setup_type ? s.setup_type.replace(/_/g, ' ') : 'Sinyal Radar Saham Syariah';
+  document.getElementById('entryNotes').value = `${setupText} • Skor: ${s.score}/100`;
+
+  const title = document.getElementById('tradeEntryModalTitle');
+  const btnText = document.getElementById('entrySubmitBtnText');
+  if (title) title.innerText = `Catat Posisi Beli: ${s.code}`;
+  if (btnText) btnText.innerText = `Simpan Posisi ${s.code} ke Jurnal`;
+}
+
+function quickAddStockToJournal(code) {
+  const upper = (code || '').toUpperCase();
+  const s = currentCandidates.find(c => c.code.toUpperCase() === upper) || allTrackedStocks.find(c => c.code.toUpperCase() === upper);
+  if (s) {
+    openAddTradeModalFromStock(s);
+  } else {
+    openTradeEntryModal();
+    document.getElementById('entryTicker').value = upper;
+    handleEntryTickerChange();
+  }
+}
+
+function handleEntryTickerChange() {
+  const ticker = document.getElementById('entryTicker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  const stock = currentCandidates.find(c => c.code.toUpperCase() === ticker) || allTrackedStocks.find(s => s.code.toUpperCase() === ticker);
+  if (stock) {
+    const nameEl = document.getElementById('entryName');
+    if (nameEl && !nameEl.value) nameEl.value = stock.name || '';
+
+    const priceEl = document.getElementById('entryPrice');
+    if (priceEl && !priceEl.value) {
+      priceEl.value = (stock.trading_plan && stock.trading_plan.entry) ? stock.trading_plan.entry : stock.price;
+      calcEntryModalCapital();
+    }
+
+    const slEl = document.getElementById('entrySL');
+    if (slEl && !slEl.value && stock.trading_plan && stock.trading_plan.stop_loss) {
+      slEl.value = stock.trading_plan.stop_loss;
+    }
+
+    const tp1El = document.getElementById('entryTP1');
+    if (tp1El && !tp1El.value && stock.trading_plan && stock.trading_plan.tp1) {
+      tp1El.value = stock.trading_plan.tp1;
+    }
+
+    const tp2El = document.getElementById('entryTP2');
+    if (tp2El && !tp2El.value && stock.trading_plan && stock.trading_plan.tp2) {
+      tp2El.value = stock.trading_plan.tp2;
+    }
+  }
+}
+
+function calcEntryModalCapital() {
+  const price = Number(document.getElementById('entryPrice').value) || 0;
+  const lots = Number(document.getElementById('entryLots').value) || 0;
+  const total = price * lots * 100;
+  const display = document.getElementById('entryCapitalAllocated');
+  if (display) display.value = formatIDR(total);
+}
+
+function handleTradeEntrySubmit(event) {
+  event.preventDefault();
+  const tradeId = document.getElementById('entryTradeId').value;
+  const code = document.getElementById('entryTicker').value.trim().toUpperCase();
+  const name = document.getElementById('entryName').value.trim() || 'Saham Syariah';
+  const entryDate = document.getElementById('entryDate').value;
+  const entryPrice = Number(document.getElementById('entryPrice').value);
+  const lots = Number(document.getElementById('entryLots').value);
+  const stopLoss = Number(document.getElementById('entrySL').value) || null;
+  const tp1 = Number(document.getElementById('entryTP1').value) || null;
+  const tp2 = Number(document.getElementById('entryTP2').value) || null;
+  const notes = document.getElementById('entryNotes').value.trim();
+
+  if (!code || !entryPrice || !lots) {
+    showToast('⚠️ Harap isi ticker, harga beli, dan jumlah lot.');
+    return;
+  }
+
+  const trades = getJournalTrades();
+
+  if (tradeId) {
+    // Edit existing trade
+    const idx = trades.findIndex(t => t.id === tradeId);
+    if (idx !== -1) {
+      trades[idx].code = code;
+      trades[idx].name = name;
+      trades[idx].entryDate = entryDate;
+      trades[idx].entryPrice = entryPrice;
+      trades[idx].lots = lots;
+      trades[idx].stopLoss = stopLoss;
+      trades[idx].tp1 = tp1;
+      trades[idx].tp2 = tp2;
+      trades[idx].notes = notes;
+      trades[idx].updatedAt = Date.now();
+
+      // Recalculate realized if closed
+      if (trades[idx].status !== 'OPEN' && trades[idx].exitPrice) {
+        const shares = lots * 100;
+        trades[idx].realizedPnl = (trades[idx].exitPrice - entryPrice) * shares;
+        trades[idx].realizedPnlPct = ((trades[idx].exitPrice - entryPrice) / entryPrice) * 100;
+      }
+      showToast(`✅ Posisi ${code} berhasil diperbarui!`);
+    }
+  } else {
+    // Add new trade
+    const newTrade = {
+      id: 'trade_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      code,
+      name,
+      entryDate: entryDate || new Date().toISOString().split('T')[0],
+      entryPrice,
+      lots,
+      stopLoss,
+      tp1,
+      tp2,
+      notes,
+      status: 'OPEN',
+      exitDate: null,
+      exitPrice: null,
+      realizedPnl: 0,
+      realizedPnlPct: 0,
+      createdAt: Date.now()
+    };
+    trades.push(newTrade);
+    showToast(`✅ Posisi ${code} (${lots} Lot) berhasil dicatat ke Jurnal!`);
+  }
+
+  saveJournalTrades(trades);
+  closeTradeEntryModal();
+  openJournalModal('OPEN');
+}
+
+function openTradeExitModal(tradeId) {
+  currentExitTradeId = tradeId;
+  const trades = getJournalTrades();
+  const t = trades.find(item => item.id === tradeId);
+  if (!t) return;
+
+  const modal = document.getElementById('tradeExitModal');
+  if (!modal) return;
+
+  document.getElementById('exitTradeId').value = tradeId;
+  document.getElementById('exitTickerSub').innerText = `${t.code} • ${t.lots} Lot (${t.lots*100} Lbr) • Beli di ${formatIDR(t.entryPrice)}`;
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('exitDateInput').value = today;
+
+  const latestPrice = findStockLatestPrice(t.code) || t.entryPrice;
+
+  // Set quick labels
+  const labelTP1 = document.getElementById('exitLabelTP1');
+  const labelTP2 = document.getElementById('exitLabelTP2');
+  const labelMarket = document.getElementById('exitLabelMarket');
+  const labelSL = document.getElementById('exitLabelSL');
+
+  if (labelTP1) labelTP1.innerText = t.tp1 ? formatIDR(t.tp1) : '-';
+  if (labelTP2) labelTP2.innerText = t.tp2 ? formatIDR(t.tp2) : '-';
+  if (labelMarket) labelMarket.innerText = formatIDR(latestPrice);
+  if (labelSL) labelSL.innerText = t.stopLoss ? formatIDR(t.stopLoss) : '-';
+
+  // Default exit price to current market price or TP1
+  const defaultExitPrice = (t.tp1 && latestPrice >= t.tp1) ? t.tp1 : latestPrice;
+  document.getElementById('exitPriceInput').value = defaultExitPrice;
+
+  calcExitModalPnL();
+  modal.classList.remove('hidden');
+}
+
+function closeTradeExitModal() {
+  const modal = document.getElementById('tradeExitModal');
+  if (modal) modal.classList.add('hidden');
+  currentExitTradeId = null;
+}
+
+function selectQuickExitPrice(type) {
+  if (!currentExitTradeId) return;
+  const trades = getJournalTrades();
+  const t = trades.find(item => item.id === currentExitTradeId);
+  if (!t) return;
+
+  const input = document.getElementById('exitPriceInput');
+  const latestPrice = findStockLatestPrice(t.code) || t.entryPrice;
+
+  if (type === 'tp1' && t.tp1) {
+    input.value = t.tp1;
+  } else if (type === 'tp2' && t.tp2) {
+    input.value = t.tp2;
+  } else if (type === 'market') {
+    input.value = latestPrice;
+  } else if (type === 'sl' && t.stopLoss) {
+    input.value = t.stopLoss;
+  }
+
+  calcExitModalPnL();
+}
+
+function calcExitModalPnL() {
+  if (!currentExitTradeId) return;
+  const trades = getJournalTrades();
+  const t = trades.find(item => item.id === currentExitTradeId);
+  if (!t) return;
+
+  const exitPrice = Number(document.getElementById('exitPriceInput').value) || 0;
+  const shares = t.lots * 100;
+  const pnl = (exitPrice - t.entryPrice) * shares;
+  const pnlPct = t.entryPrice > 0 ? ((exitPrice - t.entryPrice) / t.entryPrice) * 100 : 0;
+
+  const amountEl = document.getElementById('exitPnLAmount');
+  const pctEl = document.getElementById('exitPnLPct');
+  const pnlBox = document.getElementById('exitPnLBox');
+
+  const sign = pnl >= 0 ? '+' : '';
+  amountEl.innerText = `${sign}${formatIDR(pnl)}`;
+  pctEl.innerText = `(${sign}${pnlPct.toFixed(2)}%)`;
+
+  if (pnl > 0) {
+    amountEl.className = 'text-base font-extrabold font-mono text-emerald-400 block';
+    pctEl.className = 'text-xs font-bold text-emerald-400 block';
+    pnlBox.className = 'p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-0.5';
+  } else if (pnl < 0) {
+    amountEl.className = 'text-base font-extrabold font-mono text-red-400 block';
+    pctEl.className = 'text-xs font-bold text-red-400 block';
+    pnlBox.className = 'p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-center space-y-0.5';
+  } else {
+    amountEl.className = 'text-base font-extrabold font-mono text-gray-300 block';
+    pctEl.className = 'text-xs font-bold text-gray-400 block';
+    pnlBox.className = 'p-3 rounded-xl bg-[#0e1117] border border-gray-800 text-center space-y-0.5';
+  }
+}
+
+function handleTradeExitSubmit(event) {
+  event.preventDefault();
+  if (!currentExitTradeId) return;
+
+  const trades = getJournalTrades();
+  const idx = trades.findIndex(item => item.id === currentExitTradeId);
+  if (idx === -1) return;
+
+  const exitPrice = Number(document.getElementById('exitPriceInput').value);
+  const exitDate = document.getElementById('exitDateInput').value;
+
+  if (!exitPrice) {
+    showToast('⚠️ Harap masukkan harga realisasi jual.');
+    return;
+  }
+
+  const t = trades[idx];
+  const shares = t.lots * 100;
+  const pnl = (exitPrice - t.entryPrice) * shares;
+  const pnlPct = ((exitPrice - t.entryPrice) / t.entryPrice) * 100;
+
+  t.exitPrice = exitPrice;
+  t.exitDate = exitDate || new Date().toISOString().split('T')[0];
+  t.realizedPnl = pnl;
+  t.realizedPnlPct = pnlPct;
+  t.status = (pnl >= 0) ? 'WIN' : 'LOSS';
+  t.closedAt = Date.now();
+
+  saveJournalTrades(trades);
+  closeTradeExitModal();
+  renderJournalView();
+
+  if (pnl >= 0) {
+    showToast(`🎉 Selamat! Realisasi Profit ${t.code}: +${formatIDR(pnl)} (+${pnlPct.toFixed(1)}%)`);
+  } else {
+    showToast(`🛡️ Posisi ${t.code} ditutup. Disiplin cut loss menjaga modal trading Anda.`);
+  }
+}
+
+function reopenTrade(tradeId) {
+  const trades = getJournalTrades();
+  const t = trades.find(item => item.id === tradeId);
+  if (!t) return;
+
+  t.status = 'OPEN';
+  t.exitDate = null;
+  t.exitPrice = null;
+  t.realizedPnl = 0;
+  t.realizedPnlPct = 0;
+
+  saveJournalTrades(trades);
+  showToast(`Posisi ${t.code} dibuka kembali menjadi posisi aktif.`);
+  renderJournalView();
+}
+
+function deleteTrade(tradeId) {
+  const trades = getJournalTrades();
+  const t = trades.find(item => item.id === tradeId);
+  const name = t ? t.code : 'ini';
+
+  if (!confirm(`Hapus catatan transaksi ${name} dari jurnal?`)) return;
+
+  const updated = trades.filter(item => item.id !== tradeId);
+  saveJournalTrades(updated);
+  showToast(`Catatan ${name} telah dihapus.`);
+  renderJournalView();
+}
+
+function exportJournalCSV() {
+  const trades = getJournalTrades();
+  if (trades.length === 0) {
+    showToast('⚠️ Belum ada catatan transaksi di jurnal untuk diekspor.');
+    return;
+  }
+
+  let csv = 'ID,Kode,Nama,Status,Tanggal Beli,Harga Beli,Jumlah Lot,Total Lembar,Total Modal,Stop Loss,Target TP1,Target TP2,Tanggal Jual,Harga Jual,Realized PnL (Rp),Realized PnL (%),Catatan\n';
+
+  trades.forEach(t => {
+    const shares = t.lots * 100;
+    const capital = t.entryPrice * shares;
+    const row = [
+      t.id,
+      t.code,
+      `"${(t.name || '').replace(/"/g, '""')}"`,
+      t.status,
+      t.entryDate || '',
+      t.entryPrice,
+      t.lots,
+      shares,
+      capital,
+      t.stopLoss || '',
+      t.tp1 || '',
+      t.tp2 || '',
+      t.exitDate || '',
+      t.exitPrice || '',
+      t.realizedPnl || 0,
+      (t.realizedPnlPct || 0).toFixed(2),
+      `"${(t.notes || '').replace(/"/g, '""')}"`
+    ];
+    csv += row.join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `Jurnal_Trading_Syariah_${getJournalUserKey()}_${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`✅ File Jurnal (${a.download}) berhasil diunduh!`);
+}
+
 // Initial check on page load
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   sanitizeSearchInput();
   updateWatchlistCounter();
+  updateJournalBadges();
   checkAuthStatus();
 });
 
 window.addEventListener('load', () => {
   sanitizeSearchInput();
+  updateJournalBadges();
   setTimeout(sanitizeSearchInput, 150);
   setTimeout(sanitizeSearchInput, 500);
 });
