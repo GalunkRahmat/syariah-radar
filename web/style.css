@@ -362,8 +362,39 @@ body.light-theme {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
 }
 
+/* Chart Controls & Lightweight Charts Styling */
+.chart-ctl-btn {
+  transition: all 0.15s ease;
+}
+
+.light-theme #chartLegendBar {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #4b5563 !important;
+}
+
+.light-theme #chartLegendBar b {
+  color: #111827 !important;
+}
+
+.light-theme #chartLegendBar #legHigh {
+  color: #059669 !important;
+}
+
+.light-theme #chartLegendBar #legLow {
+  color: #dc2626 !important;
+}
+
+.light-theme #chartLegendBar #legVol {
+  color: #d97706 !important;
+}
+
+.light-theme #tvChartContainer {
+  background-color: #ffffff !important;
+}
+
 /* Smooth transition when switching themes */
-body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journal-pill {
+body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journal-pill, .chart-ctl-btn {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
 

@@ -60,8 +60,8 @@ function applyTheme(theme) {
   }
 
   // Reload Chart if stock detail modal is open
-  if (currentOpenStock && document.getElementById('stockDetailModal') && !document.getElementById('stockDetailModal').classList.contains('hidden')) {
-    loadStockChart(currentOpenStock.code);
+  if (currentOpenStock && document.getElementById('detailModal') && !document.getElementById('detailModal').classList.contains('hidden')) {
+    renderTVChart();
   }
 }
 
@@ -1503,6 +1503,7 @@ function openModal(stock) {
 function closeModal() {
   document.getElementById('detailModal').classList.add('hidden');
   currentOpenStock = null;
+  cleanupTVChart();
   if (chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
@@ -1694,110 +1695,376 @@ async function testSendTelegramAlert() {
 }
 
 // -------------------------------------------------------------
-// INTERACTIVE CHART RENDERING
+// TRADINGVIEW LIGHTWEIGHT CHARTS ENGINE (CANDLESTICK & VOLUME)
 // -------------------------------------------------------------
+let tvChartInstance = null;
+let tvCandleSeries = null;
+let tvLineSeries = null;
+let tvVolumeSeries = null;
+let tvMASeries = {};
+let tvPriceLines = [];
+let currentChartType = 'candlestick'; // 'candlestick' or 'line'
+let showChartMA = true;
+let showChartPlan = true;
+let currentChartData = null;
+let currentStockCode = '';
+let tvResizeObserver = null;
+
+function cleanupTVChart() {
+  if (tvResizeObserver) {
+    tvResizeObserver.disconnect();
+    tvResizeObserver = null;
+  }
+  if (tvChartInstance) {
+    try {
+      tvChartInstance.remove();
+    } catch (e) {}
+    tvChartInstance = null;
+  }
+  tvCandleSeries = null;
+  tvLineSeries = null;
+  tvVolumeSeries = null;
+  tvMASeries = {};
+  tvPriceLines = [];
+}
+
 async function loadStockChart(code) {
+  currentStockCode = code;
+  const container = document.getElementById('tvChartContainer');
+  const spinner = document.getElementById('chartLoadingSpinner');
+  if (!container) return;
+
+  if (spinner) spinner.classList.remove('hidden');
+
   try {
     const res = await authFetch(`/api/stock/${code}`);
-    if (!res.ok) return;
+    if (!res.ok) throw new Error("Gagal mengambil data historis saham.");
     const data = await res.json();
-    const history = data.history || [];
+    currentChartData = data;
+    renderTVChart();
+  } catch (err) {
+    console.error("Gagal load TradingView chart:", err);
+    if (spinner) {
+      spinner.innerHTML = `
+        <div class="text-center text-red-400 p-3">
+          <i class="fa-solid fa-triangle-exclamation text-lg mb-1"></i>
+          <p class="text-xs">Gagal memuat grafik: ${err.message}</p>
+        </div>
+      `;
+    }
+  }
+}
 
-    const labels = history.map(h => h.date.substring(5));
-    const closePrices = history.map(h => h.close);
-    const ma20s = history.map(h => h.ma20);
-    const ma50s = history.map(h => h.ma50);
-    const ma100s = history.map(h => h.ma100);
-    const ma200s = history.map(h => h.ma200);
+function renderTVChart() {
+  const container = document.getElementById('tvChartContainer');
+  const spinner = document.getElementById('chartLoadingSpinner');
+  if (!container || !currentChartData) return;
 
-    const ctx = document.getElementById('stockChart').getContext('2d');
-    if (chartInstance) chartInstance.destroy();
+  cleanupTVChart();
 
-    chartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Close',
-            data: closePrices,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            fill: true,
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.1
-          },
-          {
-            label: 'MA20',
-            data: ma20s,
-            borderColor: '#60a5fa',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            borderDash: [2, 2]
-          },
-          {
-            label: 'MA50',
-            data: ma50s,
-            borderColor: '#f59e0b',
-            borderWidth: 1.5,
-            pointRadius: 0
-          },
-          {
-            label: 'MA100',
-            data: ma100s,
-            borderColor: '#06b6d4',
-            borderWidth: 1.5,
-            pointRadius: 0
-          },
-          {
-            label: 'MA200',
-            data: ma200s,
-            borderColor: '#a855f7',
-            borderWidth: 1.5,
-            pointRadius: 0
-          }
-        ]
+  const isLight = (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme')));
+  const history = currentChartData.history || [];
+
+  if (history.length === 0) {
+    if (spinner) {
+      spinner.innerHTML = '<span class="text-xs text-gray-500">Data grafik historis belum tersedia.</span>';
+    }
+    return;
+  }
+
+  // Check if LightweightCharts library is loaded
+  if (typeof LightweightCharts === 'undefined') {
+    console.warn("LightweightCharts library not loaded yet.");
+    return;
+  }
+
+  const bgColor = isLight ? '#ffffff' : '#0e1117';
+  const textColor = isLight ? '#4b5563' : '#9ca3af';
+  const gridColor = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)';
+  const borderColor = isLight ? '#e5e7eb' : '#21262d';
+
+  tvChartInstance = LightweightCharts.createChart(container, {
+    width: container.clientWidth || 600,
+    height: container.clientHeight || 300,
+    layout: {
+      background: { type: 'solid', color: bgColor },
+      textColor: textColor,
+      fontSize: 10,
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+    },
+    grid: {
+      vertLines: { color: gridColor },
+      horzLines: { color: gridColor }
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: {
+        color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+        width: 1,
+        style: LightweightCharts.LineStyle.Dotted
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#374151' : '#9ca3af',
-              font: { size: 10 }
-            }
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#4b5563' : '#6b7280',
-              maxTicksLimit: 8,
-              font: { size: 10 }
-            },
-            grid: {
-              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)'
-            }
-          },
-          y: {
-            ticks: {
-              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? '#4b5563' : '#6b7280',
-              font: { size: 10 }
-            },
-            grid: {
-              color: (document.documentElement.classList.contains('light-theme') || (document.body && document.body.classList.contains('light-theme'))) ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)'
-            }
-          }
-        }
+      horzLine: {
+        color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+        width: 1,
+        style: LightweightCharts.LineStyle.Dotted
+      }
+    },
+    rightPriceScale: {
+      borderColor: borderColor,
+      scaleMargins: {
+        top: 0.1,
+        bottom: 0.25 // leave room for volume
+      }
+    },
+    timeScale: {
+      borderColor: borderColor,
+      timeVisible: true,
+      secondsVisible: false
+    },
+    handleScroll: {
+      mouseWheel: true,
+      pressedMouseMove: true,
+      horzTouchDrag: true,
+      vertTouchDrag: false
+    },
+    handleScale: {
+      axisPressedMouseMove: true,
+      mouseWheel: true,
+      pinch: true
+    }
+  });
+
+  // 1. Add Volume Series (Histogram at bottom)
+  tvVolumeSeries = tvChartInstance.addHistogramSeries({
+    priceFormat: { type: 'volume' },
+    priceScaleId: '', // independent scale overlay
+  });
+  tvVolumeSeries.priceScale().applyOptions({
+    scaleMargins: {
+      top: 0.8,
+      bottom: 0
+    }
+  });
+
+  const volumeData = history.map(h => ({
+    time: h.date,
+    value: h.volume,
+    color: (h.close >= h.open) ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.45)'
+  }));
+  tvVolumeSeries.setData(volumeData);
+
+  // 2. Add Candlestick or Line Series
+  if (currentChartType === 'candlestick') {
+    tvCandleSeries = tvChartInstance.addCandlestickSeries({
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderUpColor: '#10b981',
+      borderDownColor: '#ef4444',
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444'
+    });
+    const candleData = history.map(h => ({
+      time: h.date,
+      open: h.open,
+      high: h.high,
+      low: h.low,
+      close: h.close
+    }));
+    tvCandleSeries.setData(candleData);
+  } else {
+    tvLineSeries = tvChartInstance.addLineSeries({
+      color: '#10b981',
+      lineWidth: 2,
+      priceLineVisible: true
+    });
+    const lineData = history.map(h => ({
+      time: h.date,
+      value: h.close
+    }));
+    tvLineSeries.setData(lineData);
+  }
+
+  // 3. Add MA Series
+  if (showChartMA) {
+    const maConfigs = [
+      { key: 'ma20', color: '#60a5fa', title: 'MA20', width: 1.5, style: LightweightCharts.LineStyle.Dashed },
+      { key: 'ma50', color: '#f59e0b', title: 'MA50', width: 1.5, style: LightweightCharts.LineStyle.Solid },
+      { key: 'ma100', color: '#06b6d4', title: 'MA100', width: 1.5, style: LightweightCharts.LineStyle.Solid },
+      { key: 'ma200', color: '#a855f7', title: 'MA200', width: 1.5, style: LightweightCharts.LineStyle.Solid }
+    ];
+
+    maConfigs.forEach(cfg => {
+      const series = tvChartInstance.addLineSeries({
+        color: cfg.color,
+        lineWidth: cfg.width,
+        lineStyle: cfg.style,
+        title: cfg.title,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false
+      });
+      const data = history
+        .filter(h => h[cfg.key] !== null && h[cfg.key] !== undefined)
+        .map(h => ({ time: h.date, value: h[cfg.key] }));
+      series.setData(data);
+      tvMASeries[cfg.key] = series;
+    });
+  }
+
+  // 4. Add Trading Plan Price Lines (Entry, SL, TP1, TP2)
+  if (showChartPlan && currentOpenStock && currentOpenStock.trading_plan) {
+    const plan = currentOpenStock.trading_plan;
+    const targetSeries = tvCandleSeries || tvLineSeries;
+
+    if (targetSeries) {
+      if (plan.entry) {
+        tvPriceLines.push(targetSeries.createPriceLine({
+          price: plan.entry,
+          color: '#10b981',
+          lineWidth: 1.5,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `Entry: ${formatIDR(plan.entry)}`
+        }));
+      }
+
+      if (plan.stop_loss) {
+        tvPriceLines.push(targetSeries.createPriceLine({
+          price: plan.stop_loss,
+          color: '#ef4444',
+          lineWidth: 1.5,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `SL: ${formatIDR(plan.stop_loss)}`
+        }));
+      }
+
+      if (plan.tp1) {
+        tvPriceLines.push(targetSeries.createPriceLine({
+          price: plan.tp1,
+          color: '#06b6d4',
+          lineWidth: 1.5,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `TP1: ${formatIDR(plan.tp1)}`
+        }));
+      }
+
+      if (plan.tp2) {
+        tvPriceLines.push(targetSeries.createPriceLine({
+          price: plan.tp2,
+          color: '#a855f7',
+          lineWidth: 1.5,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `TP2: ${formatIDR(plan.tp2)}`
+        }));
+      }
+    }
+  }
+
+  // 5. Setup Crosshair / Hover OHLCV Tooltip Bar
+  const lastBar = history[history.length - 1];
+  updateLegendBar(lastBar);
+
+  tvChartInstance.subscribeCrosshairMove(param => {
+    if (!param.time || param.point === undefined) {
+      updateLegendBar(lastBar);
+      return;
+    }
+
+    const currentBar = history.find(h => h.date === param.time);
+    if (currentBar) {
+      updateLegendBar(currentBar);
+    }
+  });
+
+  // Fit content
+  tvChartInstance.timeScale().fitContent();
+
+  // Setup Resize Observer for responsiveness
+  if (window.ResizeObserver) {
+    tvResizeObserver = new ResizeObserver(entries => {
+      if (!entries || entries.length === 0 || !tvChartInstance) return;
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        tvChartInstance.applyOptions({ width, height });
       }
     });
-  } catch (e) {
-    console.error("Gagal load chart:", e);
+    tvResizeObserver.observe(container);
   }
+
+  if (spinner) spinner.classList.add('hidden');
+}
+
+function updateLegendBar(bar) {
+  if (!bar) return;
+  const legDate = document.getElementById('legDate');
+  const legOpen = document.getElementById('legOpen');
+  const legHigh = document.getElementById('legHigh');
+  const legLow = document.getElementById('legLow');
+  const legClose = document.getElementById('legClose');
+  const legVol = document.getElementById('legVol');
+
+  if (legDate) legDate.innerText = bar.date;
+  if (legOpen) legOpen.innerText = formatIDR(bar.open);
+  if (legHigh) legHigh.innerText = formatIDR(bar.high);
+  if (legLow) legLow.innerText = formatIDR(bar.low);
+
+  if (legClose) {
+    const diff = bar.close - bar.open;
+    const diffPct = bar.open > 0 ? ((diff / bar.open) * 100).toFixed(1) : 0;
+    const sign = diff >= 0 ? '+' : '';
+    const colorClass = diff >= 0 ? 'text-emerald-400' : 'text-red-400';
+    legClose.className = `${colorClass} font-bold`;
+    legClose.innerText = `${formatIDR(bar.close)} (${sign}${diffPct}%)`;
+  }
+
+  if (legVol) {
+    const lots = Math.round(bar.volume / 100);
+    legVol.innerText = (lots >= 1000) ? `${(lots / 1000).toFixed(1)}k Lot` : `${lots} Lot`;
+  }
+}
+
+function setChartType(type) {
+  currentChartType = type;
+  const candleBtn = document.getElementById('chartTypeCandleBtn');
+  const lineBtn = document.getElementById('chartTypeLineBtn');
+
+  if (type === 'candlestick') {
+    if (candleBtn) candleBtn.className = 'chart-ctl-btn px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40';
+    if (lineBtn) lineBtn.className = 'chart-ctl-btn px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700';
+  } else {
+    if (candleBtn) candleBtn.className = 'chart-ctl-btn px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700';
+    if (lineBtn) lineBtn.className = 'chart-ctl-btn px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40';
+  }
+
+  renderTVChart();
+}
+
+function toggleChartMA() {
+  showChartMA = !showChartMA;
+  const btn = document.getElementById('chartToggleMABtn');
+  if (btn) {
+    if (showChartMA) {
+      btn.className = 'chart-ctl-btn px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-semibold';
+    } else {
+      btn.className = 'chart-ctl-btn px-2 py-1 rounded bg-gray-800 text-gray-400 border border-gray-700 line-through';
+    }
+  }
+  renderTVChart();
+}
+
+function toggleChartPlanLines() {
+  showChartPlan = !showChartPlan;
+  const btn = document.getElementById('chartTogglePlanBtn');
+  if (btn) {
+    if (showChartPlan) {
+      btn.className = 'chart-ctl-btn px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-semibold';
+    } else {
+      btn.className = 'chart-ctl-btn px-2 py-1 rounded bg-gray-800 text-gray-400 border border-gray-700 line-through';
+    }
+  }
+  renderTVChart();
 }
 
 // -------------------------------------------------------------

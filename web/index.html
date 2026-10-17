@@ -15,8 +15,9 @@
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.6.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.7.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -30,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.6.0') {
+          if (key !== 'syariah-radar-v1.7.0') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -695,17 +696,63 @@
           </ul>
         </div>
 
-        <!-- INTERACTIVE CHART -->
-        <div class="bg-[#0e1117] border border-gray-800 rounded-xl p-3.5 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
-              <i class="fa-solid fa-chart-line text-emerald-400"></i>
-              Grafik Harga & MA (Daily 60 Hari)
-            </span>
-            <span class="text-[10px] text-gray-400 font-mono">Candle Daily</span>
+        <!-- TRADINGVIEW INTERACTIVE CANDLESTICK & VOLUME CHART -->
+        <div class="bg-[#0e1117] border border-gray-800 rounded-2xl p-3 md:p-4 space-y-2.5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-gray-200 flex items-center gap-1.5 text-xs md:text-sm">
+                <i class="fa-solid fa-chart-candlestick text-emerald-400"></i>
+                Grafik Candlestick Interaktif (Daily)
+              </span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30 font-semibold hidden sm:inline">
+                TradingView Engine
+              </span>
+            </div>
+
+            <!-- CHART CONTROLS & MA TOGGLES -->
+            <div class="flex items-center gap-1 text-[10px]">
+              <button type="button" id="chartTypeCandleBtn" onclick="setChartType('candlestick')" class="chart-ctl-btn px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
+                <i class="fa-solid fa-chart-candlestick"></i> Candle
+              </button>
+              <button type="button" id="chartTypeLineBtn" onclick="setChartType('line')" class="chart-ctl-btn px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700">
+                <i class="fa-solid fa-chart-line"></i> Garis
+              </button>
+              <button type="button" id="chartToggleMABtn" onclick="toggleChartMA()" class="chart-ctl-btn px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-semibold" title="Tampilkan/Sembunyikan Garis MA">
+                MA
+              </button>
+              <button type="button" id="chartTogglePlanBtn" onclick="toggleChartPlanLines()" class="chart-ctl-btn px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-semibold" title="Tampilkan Garis Target Beli & SL">
+                Level
+              </button>
+            </div>
           </div>
-          <div class="h-56 relative w-full">
-            <canvas id="stockChart"></canvas>
+
+          <!-- REAL-TIME HOVER / CROSSHAIR OHLCV TOOLTIP BAR -->
+          <div id="chartLegendBar" class="flex items-center gap-2 md:gap-3 text-[10px] md:text-[11px] font-mono text-gray-400 overflow-x-auto py-1 border-y border-gray-800/80 bg-gray-900/30 px-2 rounded-lg">
+            <span>Tgl: <b id="legDate" class="text-white">-</b></span>
+            <span>O: <b id="legOpen" class="text-white">-</b></span>
+            <span>H: <b id="legHigh" class="text-emerald-400">-</b></span>
+            <span>L: <b id="legLow" class="text-red-400">-</b></span>
+            <span>C: <b id="legClose" class="text-white">-</b></span>
+            <span>Vol: <b id="legVol" class="text-amber-400">-</b></span>
+          </div>
+
+          <!-- CHART CANVAS CONTAINER -->
+          <div id="tvChartContainer" class="w-full h-64 md:h-80 rounded-xl overflow-hidden relative">
+            <div id="chartLoadingSpinner" class="absolute inset-0 flex items-center justify-center bg-[#0e1117]/80 z-10 text-gray-400 text-xs">
+              <i class="fa-solid fa-spinner fa-spin text-xl text-emerald-400 mr-2"></i>
+              <span>Memuat Candlestick & Volume...</span>
+            </div>
+          </div>
+
+          <!-- LEGEND DESCRIPTION -->
+          <div class="flex items-center justify-between text-[10px] text-gray-500 flex-wrap gap-1 pt-0.5">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-[#60a5fa] inline-block"></span> MA20</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-[#f59e0b] inline-block"></span> MA50</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-[#06b6d4] inline-block"></span> MA100</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-[#a855f7] inline-block"></span> MA200</span>
+            </div>
+            <span class="text-[9px] text-gray-500 italic">💡 Sentuh/Geser candle untuk cek harga harian & pinch-to-zoom</span>
           </div>
         </div>
 
@@ -1429,6 +1476,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.6.0"></script>
+  <script src="/static/app.js?v=1.7.0"></script>
 </body>
 </html>
