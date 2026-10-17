@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Query, HTTPException, Body, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, HTMLResponse
 
 from screener.data_fetcher import fetch_all_sharia_data, load_sharia_stocks, STOCKS_FILE, CACHE_DIR, get_latest_trading_date
 from screener.engine import run_screener, run_screener_diagnostics
@@ -63,26 +63,26 @@ if WEB_DIR.exists():
 
 
 # PWA Static Files
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def serve_index():
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(
-            index_file,
+        return HTMLResponse(
+            content=index_file.read_text(encoding="utf-8"),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
                 "Expires": "0"
             }
         )
-    return {"message": "IDX Sharia Stock Screener API is running."}
+    return HTMLResponse("<h1>IDX Sharia Stock Screener API is running.</h1>")
 
 
 @app.get("/manifest.json")
 def serve_manifest():
     manifest_file = WEB_DIR / "manifest.json"
     if manifest_file.exists():
-        return FileResponse(manifest_file, media_type="application/manifest+json")
+        return Response(content=manifest_file.read_text(encoding="utf-8"), media_type="application/manifest+json")
     raise HTTPException(status_code=404, detail="manifest.json not found")
 
 
@@ -90,8 +90,8 @@ def serve_manifest():
 def serve_service_worker():
     sw_file = WEB_DIR / "sw.js"
     if sw_file.exists():
-        return FileResponse(
-            sw_file,
+        return Response(
+            content=sw_file.read_text(encoding="utf-8"),
             media_type="application/javascript",
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
