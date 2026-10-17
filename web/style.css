@@ -1,5 +1,20 @@
-/* Custom Styles for IDX Sharia Swing Screener */
+/* Custom Styles for IDX Sharia Swing Screener (Stockbit-Style Mobile & Desktop Pro) */
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  body {
+    padding-bottom: 2rem;
+  }
+}
+
+/* Filter pills */
 .filter-pill {
   padding: 6px 14px;
   border-radius: 9999px;
@@ -14,6 +29,7 @@
   align-items: center;
   gap: 6px;
   user-select: none;
+  font-size: 11px;
 }
 
 .filter-pill:hover {
@@ -22,27 +38,88 @@
 }
 
 .filter-pill.active {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(16, 185, 129, 0.18);
   border-color: #10b981;
   color: #34d399;
   font-weight: 600;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
 }
 
-/* Card hover */
+/* Stockbit Card Style */
 .stock-card {
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
 }
 
-.stock-card:hover {
-  border-color: #3b82f6;
-  transform: translateY(-2px);
+.stock-card:active {
+  transform: scale(0.985);
 }
 
-/* Hide scrollbar for clean mobile UI */
+@media (hover: hover) {
+  .stock-card:hover {
+    border-color: #10b981;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px rgba(16, 185, 129, 0.15);
+  }
+}
+
+/* Hide scrollbar for clean mobile swipe */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Mobile Bottom Navigation */
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  color: #8b949e;
+  transition: all 0.15s ease;
+  padding: 6px 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.mobile-nav-item.active {
+  color: #10b981;
+}
+
+.mobile-nav-item.active i {
+  transform: translateY(-1px);
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.92);
+}
+
+/* Slide up animation for bottom sheets */
+@keyframes slideUpAnim {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bottom-sheet-anim {
+  animation: slideUpAnim 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Drag Handle for Bottom Sheets */
+.drag-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #30363d;
+  margin: 8px auto 4px auto;
 }

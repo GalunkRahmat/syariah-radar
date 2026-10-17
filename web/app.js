@@ -56,6 +56,8 @@ function hideLoginScreen() {
 function updateUserBadge(username) {
   const el = document.getElementById('loggedInUserName');
   if (el) el.innerText = username || 'Galunk';
+  const mobileEl = document.getElementById('mobileUserName');
+  if (mobileEl) mobileEl.innerText = username || 'Galunk';
 }
 
 function togglePasswordVisibility() {
@@ -165,6 +167,17 @@ try {
 function updateWatchlistCounter() {
   const el = document.getElementById('watchlistCount');
   if (el) el.innerText = watchlist.length;
+  const mobileBadge = document.getElementById('mobileWatchlistBadge');
+  if (mobileBadge) {
+    mobileBadge.innerText = watchlist.length;
+    if (watchlist.length > 0) {
+      mobileBadge.classList.remove('hidden');
+      mobileBadge.classList.add('flex');
+    } else {
+      mobileBadge.classList.add('hidden');
+      mobileBadge.classList.remove('flex');
+    }
+  }
 }
 
 function isWatchlisted(code) {
@@ -456,7 +469,8 @@ function clearSearch() {
 // -------------------------------------------------------------
 async function loadHistoryDates() {
   const select = document.getElementById('historyDateSelect');
-  if (!select) return;
+  const mobileSelect = document.getElementById('mobileHistoryDateSelect');
+  if (!select && !mobileSelect) return;
 
   try {
     const res = await authFetch('/api/history/dates');
@@ -464,18 +478,30 @@ async function loadHistoryDates() {
     const data = await res.json();
     historyDatesList = Array.isArray(data) ? data : (data.dates || []);
 
-    const currentVal = selectedHistoryDate || select.value;
-    select.innerHTML = '<option value="">🟢 Terkini (Hari Ini)</option>';
+    const currentVal = selectedHistoryDate || (select ? select.value : '');
+
+    if (select) select.innerHTML = '<option value="">🟢 Terkini (Hari Ini)</option>';
+    if (mobileSelect) mobileSelect.innerHTML = '<option value="">🟢 Terkini (Hari Ini)</option>';
 
     historyDatesList.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.market_date;
       const count = item.total_candidates !== undefined ? item.total_candidates : (item.candidate_count || 0);
-      opt.textContent = `📅 ${item.market_date} (${count} Saham)`;
-      if (item.market_date === currentVal) {
-        opt.selected = true;
+      const text = `📅 ${item.market_date} (${count} Saham)`;
+
+      if (select) {
+        const opt = document.createElement('option');
+        opt.value = item.market_date;
+        opt.textContent = text;
+        if (item.market_date === currentVal) opt.selected = true;
+        select.appendChild(opt);
       }
-      select.appendChild(opt);
+
+      if (mobileSelect) {
+        const mOpt = document.createElement('option');
+        mOpt.value = item.market_date;
+        mOpt.textContent = text;
+        if (item.market_date === currentVal) mOpt.selected = true;
+        mobileSelect.appendChild(mOpt);
+      }
     });
   } catch (e) {
     console.warn("Could not load history dates:", e);
@@ -619,6 +645,10 @@ async function fetchResults(forceRefresh = false) {
 
   if (refreshIcon) refreshIcon.classList.add('fa-spin');
   if (refreshBtn) refreshBtn.disabled = true;
+  const mRefreshIcon = document.getElementById('mobileRefreshIcon');
+  const mRefreshBtn = document.getElementById('mobileRefreshBtn');
+  if (mRefreshIcon) mRefreshIcon.classList.add('fa-spin');
+  if (mRefreshBtn) mRefreshBtn.disabled = true;
 
   try {
     const url = `/api/screener/results?min_score=50${forceRefresh ? '&force_refresh=true' : ''}`;
@@ -654,6 +684,8 @@ async function fetchResults(forceRefresh = false) {
   } finally {
     if (refreshIcon) refreshIcon.classList.remove('fa-spin');
     if (refreshBtn) refreshBtn.disabled = false;
+    if (mRefreshIcon) mRefreshIcon.classList.remove('fa-spin');
+    if (mRefreshBtn) mRefreshBtn.disabled = false;
   }
 }
 
@@ -661,7 +693,17 @@ function setFilter(filterType) {
   currentFilter = filterType;
   document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.getElementById(`filter-${filterType}`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+
+  if (filterType === 'WATCHLIST') {
+    updateMobileNavActive('Watchlist');
+  } else {
+    updateMobileNavActive('Radar');
+  }
+
   renderCandidates();
 }
 
@@ -828,32 +870,32 @@ function renderCandidates() {
     // Setup Badge
     let setupBadge = '';
     if (c.setup_type === 'STAGE2_BREAKOUT') {
-      setupBadge = '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold">🚀 Breakout</span>';
+      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-semibold">🚀 Breakout</span>';
     } else if (c.setup_type === 'UPTREND_PULLBACK') {
-      setupBadge = '<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-semibold">📈 Uptrend Pullback</span>';
+      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[9px] font-semibold">📈 Pullback</span>';
     } else if (c.setup_type === 'RS_LEADER') {
-      setupBadge = '<span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[10px] font-semibold">👑 Leader >MA200</span>';
+      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-semibold">👑 Leader >MA200</span>';
     } else {
-      setupBadge = '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-semibold">⚡ Oversold Rebound</span>';
+      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-semibold">⚡ Rebound</span>';
     }
 
     // Risk Badge
     let riskBadge = '';
     if (c.risk_level === 'LOW_RISK') {
-      riskBadge = '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">🛡️ Paling Aman (Grade A+)</span>';
+      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">🛡️ Grade A+</span>';
     } else if (c.risk_level === 'MEDIUM_RISK') {
-      riskBadge = '<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-medium">⚖️ Moderat</span>';
+      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-medium">⚖️ Moderat</span>';
     } else {
-      riskBadge = '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-medium">⚠️ Spekulatif</span>';
+      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-medium">⚠️ Spekulatif</span>';
     }
 
     // Bandarmologi Badge
     const bandar = c.bandarmologi || {};
     let bandarChip = '';
     if (bandar.status === 'BIG_ACCUMULATION') {
-      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-700/60 text-[10px] font-semibold">💰 Akumulasi Jumbo</span>';
+      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-700/60 text-[9px] font-semibold">💰 Akumulasi Jumbo</span>';
     } else if (bandar.status === 'ACCUMULATION') {
-      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-blue-950/70 text-blue-400 border border-blue-700/60 text-[10px] font-semibold">🕵️ Akumulasi</span>';
+      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-blue-950/70 text-blue-400 border border-blue-700/60 text-[9px] font-semibold">🕵️ Akumulasi</span>';
     }
 
     // Fundamental Highlights
@@ -865,62 +907,93 @@ function renderCandidates() {
     if (!fundText) fundText = fund.cap_category || 'Saham Syariah';
 
     const maBadge = c.ma_aligned 
-      ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono border border-emerald-500/20">MA50>100>200</span>' 
-      : (c.is_above_ma200 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 font-mono border border-blue-500/20">>MA200</span>' : '');
+      ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono border border-emerald-500/20">MA50>100>200</span>' 
+      : (c.is_above_ma200 ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 font-mono border border-blue-500/20">>MA200</span>' : '');
+
+    // Trading Plan Strip (Stockbit Style)
+    const plan = c.trading_plan || {};
+    const entryFormatted = plan.entry ? `Rp ${formatIDR(plan.entry)}` : `Rp ${formatIDR(c.price)}`;
+    const slFormatted = plan.stop_loss ? `Rp ${formatIDR(plan.stop_loss)}` : '-';
+    const tp1Formatted = plan.tp1 ? `Rp ${formatIDR(plan.tp1)}` : '-';
+    const riskPctStr = plan.risk_pct ? `(-${plan.risk_pct}%)` : '';
+    const tp1PctStr = plan.tp1_pct ? `(+${plan.tp1_pct}%)` : '';
 
     html += `
-      <div class="stock-card bg-[#161b22] border border-gray-800 rounded-xl p-3.5 shadow-sm space-y-3 cursor-pointer" onclick='openModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
-        <div class="flex items-start justify-between">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-base font-bold text-white tracking-wide">${c.code}</span>
+      <div class="stock-card bg-[#161b22] border border-gray-800 hover:border-emerald-500/40 rounded-2xl p-3 md:p-4 shadow-sm space-y-2.5 cursor-pointer" onclick='openModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
+        
+        <!-- HEADER ROW: TICKER, BADGES & PRICE -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="space-y-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-base md:text-lg font-extrabold text-white tracking-wide">${c.code}</span>
+              <span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold">ISSI</span>
               ${riskBadge}
               ${setupBadge}
               ${bandarChip}
               ${maBadge}
             </div>
-            <p class="text-xs text-gray-400 line-clamp-1">${c.name} • <span class="text-gray-500">${c.sector}</span></p>
+            <p class="text-xs text-gray-400 truncate">${c.name} • <span class="text-gray-500">${c.sector}</span></p>
           </div>
-          <div class="flex items-center gap-2">
-            <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
               <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
             </button>
             <div class="text-right">
-              <span class="text-base font-bold text-white font-mono block">${formatIDR(c.price)}</span>
-              <span class="text-xs font-semibold ${changeColor}">${changeSign}${c.change_pct}%</span>
+              <span class="text-base md:text-lg font-bold text-white font-mono block">${formatIDR(c.price)}</span>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] md:text-xs font-bold ${isUp ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
+                ${changeSign}${c.change_pct}%
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- 3-PILLAR SCORE ROW -->
-        <div class="grid grid-cols-4 gap-2 bg-[#0e1117] p-2 rounded-lg border border-gray-800 text-center text-[11px]">
+        <!-- 3-PILLAR SCORE ROW (STOCKBIT CAPSULES) -->
+        <div class="grid grid-cols-4 gap-1.5 md:gap-2 bg-[#0e1117] p-2 rounded-xl border border-gray-800/80 text-center text-[10px] md:text-[11px]">
           <div>
-            <span class="text-gray-500 text-[10px] block">Skor Total</span>
-            <span class="font-bold text-emerald-400">${c.score}/100</span>
+            <span class="text-gray-500 text-[9px] md:text-[10px] block">Skor Total</span>
+            <span class="font-extrabold text-emerald-400">${c.score}/100</span>
           </div>
           <div>
-            <span class="text-gray-500 text-[10px] block">Bandar</span>
-            <span class="font-semibold ${c.bandar_score >= 65 ? 'text-blue-400' : 'text-gray-300'}">${c.bandar_score}/100</span>
+            <span class="text-gray-500 text-[9px] md:text-[10px] block">Bandar</span>
+            <span class="font-bold ${c.bandar_score >= 65 ? 'text-blue-400' : 'text-gray-300'}">${c.bandar_score}/100</span>
           </div>
           <div>
-            <span class="text-gray-500 text-[10px] block">Fundamental</span>
-            <span class="font-semibold ${c.fund_score >= 65 ? 'text-purple-400' : 'text-gray-300'}">${c.fund_score}/100</span>
+            <span class="text-gray-500 text-[9px] md:text-[10px] block">Fundamental</span>
+            <span class="font-bold ${c.fund_score >= 65 ? 'text-purple-400' : 'text-gray-300'}">${c.fund_score}/100</span>
           </div>
           <div>
-            <span class="text-gray-500 text-[10px] block">Volume</span>
-            <span class="font-semibold text-emerald-400">${c.vol_ratio}x Vol 20</span>
+            <span class="text-gray-500 text-[9px] md:text-[10px] block">Volume</span>
+            <span class="font-bold text-emerald-400">${c.vol_ratio}x</span>
           </div>
         </div>
 
-        <!-- FOOTER SUMMARY & ENTRY -->
-        <div class="flex items-center justify-between pt-0.5 text-xs">
-          <div class="text-[11px] text-gray-400 truncate max-w-[65%]">
-            <span class="text-gray-500 font-medium">${fundText}</span>
+        <!-- TRADING PLAN PREVIEW (STOCKBIT STYLE) -->
+        <div class="bg-[#0e1117] px-2.5 py-2 rounded-xl border border-gray-800/80 flex items-center justify-between text-[10px] md:text-[11px] font-mono">
+          <div class="flex items-center gap-1">
+            <span class="text-gray-400 text-[9px] block">Area Beli:</span>
+            <span class="text-white font-bold">${entryFormatted}</span>
           </div>
-          <span class="text-[11px] font-semibold text-emerald-400 flex items-center gap-1 hover:underline">
-            Trading Plan & Lot <i class="fa-solid fa-chevron-right text-[9px]"></i>
+          <div class="flex items-center gap-1">
+            <span class="text-red-400/80 text-[9px] block">Stop Loss:</span>
+            <span class="text-red-400 font-bold">${slFormatted} <span class="text-[9px]">${riskPctStr}</span></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-emerald-400/80 text-[9px] block">Target TP1:</span>
+            <span class="text-emerald-400 font-bold">${tp1Formatted} <span class="text-[9px]">${tp1PctStr}</span></span>
+          </div>
+        </div>
+
+        <!-- FOOTER: METRIC & DETAIL CTA -->
+        <div class="flex items-center justify-between pt-0.5 text-xs">
+          <div class="text-[10px] md:text-[11px] text-gray-400 truncate max-w-[65%]">
+            <span class="text-gray-400 font-medium">${fundText}</span>
+          </div>
+          <span class="text-[10px] md:text-[11px] font-semibold text-emerald-400 flex items-center gap-1 hover:underline shrink-0">
+            Chart & Lot <i class="fa-solid fa-chevron-right text-[8px]"></i>
           </span>
         </div>
+
       </div>
     `;
   });
@@ -1463,6 +1536,92 @@ async function loadStockChart(code) {
     });
   } catch (e) {
     console.error("Gagal load chart:", e);
+  }
+}
+
+// -------------------------------------------------------------
+// STOCKBIT-STYLE MOBILE BOTTOM NAVIGATION & ACTIONS
+// -------------------------------------------------------------
+function updateMobileNavActive(activeTab) {
+  const tabs = ['Radar', 'Watchlist', 'History', 'Calc', 'Menu'];
+  tabs.forEach(t => {
+    const el = document.getElementById(`mobileNav${t}`);
+    if (el) {
+      if (t.toLowerCase() === activeTab.toLowerCase()) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    }
+  });
+}
+
+function switchMobileTab(tab) {
+  updateMobileNavActive(tab);
+  if (tab === 'radar') {
+    closeMobileHistoryModal();
+    closeMobileMenuModal();
+    setFilter('ALL');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'watchlist') {
+    closeMobileHistoryModal();
+    closeMobileMenuModal();
+    setFilter('WATCHLIST');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'history') {
+    closeMobileMenuModal();
+    openMobileHistoryModal();
+  } else if (tab === 'calc') {
+    closeMobileHistoryModal();
+    closeMobileMenuModal();
+    openStandaloneCalcModal();
+  } else if (tab === 'menu') {
+    closeMobileHistoryModal();
+    openMobileMenuModal();
+  }
+}
+
+function openMobileHistoryModal() {
+  const m = document.getElementById('mobileHistoryModal');
+  if (m) m.classList.remove('hidden');
+}
+
+function closeMobileHistoryModal() {
+  const m = document.getElementById('mobileHistoryModal');
+  if (m) {
+    m.classList.add('hidden');
+    updateMobileNavActive(currentFilter === 'WATCHLIST' ? 'Watchlist' : 'Radar');
+  }
+}
+
+function openMobileMenuModal() {
+  const m = document.getElementById('mobileMenuModal');
+  if (m) m.classList.remove('hidden');
+}
+
+function closeMobileMenuModal() {
+  const m = document.getElementById('mobileMenuModal');
+  if (m) {
+    m.classList.add('hidden');
+    updateMobileNavActive(currentFilter === 'WATCHLIST' ? 'Watchlist' : 'Radar');
+  }
+}
+
+function handleMobileHistoryDateChange(date) {
+  const select = document.getElementById('historyDateSelect');
+  if (select) select.value = date;
+  closeMobileHistoryModal();
+  handleHistoryDateChange(date);
+}
+
+function toggleMobileSearch() {
+  const input = document.getElementById('searchInput');
+  const container = document.getElementById('searchContainer');
+  if (input) {
+    input.focus();
+    if (container) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 }
 
