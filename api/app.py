@@ -12,9 +12,9 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Query, HTTPException, Body, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
-from screener.data_fetcher import fetch_all_sharia_data, load_sharia_stocks, STOCKS_FILE, CACHE_DIR
+from screener.data_fetcher import fetch_all_sharia_data, load_sharia_stocks, STOCKS_FILE, CACHE_DIR, get_latest_trading_date
 from screener.engine import run_screener, run_screener_diagnostics
 from notifier.telegram_alert import (
     load_telegram_config,
@@ -24,6 +24,13 @@ from notifier.telegram_alert import (
     build_alert_message
 )
 from api.auth import authenticate_user, create_session, verify_session, revoke_session
+from screener.history_db import (
+    save_screening_snapshot,
+    get_history_dates,
+    get_history_candidates,
+    get_stock_timeline,
+    generate_excel_export
+)
 
 app = FastAPI(
     title="Syariah Swing Radar Pro API",
@@ -317,7 +324,72 @@ def get_screening_results(
         }
     }
 
-    return {"summary": summary, "candidates": filtered, "all_stocks": all_stocks}
+    market_date_str = get_latest_trading_date().strftime("%Y-%m-%d")
+    try:
+        save_screening_snapshot(market_date_str, all_candidates, summary)
+    except Exception as e:
+        print(f"[HISTORY DB] Auto-save error: {e}")
+
+    return {"market_date": market_date_str, "summary": summary, "candidates": filtered, "all_stocks": all_stocks}
+
+
+# -------------------------------------------------------------
+# HISTORICAL DATABASE & EXCEL EXPORT
+# -------------------------------------------------------------
+@app.get("/api/history/dates")
+def get_historical_dates(user: str = Depends(require_auth)):
+    dates = get_history_dates()
+    return {"dates": dates, "total": len(dates)}
+
+
+@app.get("/api/history/results")
+def get_historical_results(
+    date: str = Query(..., description="Date YYYY-MM-DD"),
+    min_score: int = Query(50),
+    user: str = Depends(require_auth)
+):
+    data = get_history_candidates(date)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Data screening untuk tanggal {date} belum tersedia di database arsip.")
+    candidates = [c for c in data["candidates"] if c.get("score", 0) >= min_score]
+    return {"market_date": date, "summary": data["summary"], "candidates": candidates}
+
+
+@app.get("/api/history/stock/{code}")
+def get_stock_signal_history(code: str, user: str = Depends(require_auth)):
+    timeline = get_stock_timeline(code)
+    return {"code": code.upper(), "timeline": timeline}
+
+
+@app.get("/api/screener/export-excel")
+def export_screener_excel(
+    date: Optional[str] = Query(None, description="Date YYYY-MM-DD"),
+    min_score: int = Query(50),
+    user: str = Depends(require_auth)
+):
+    target_date = date or get_latest_trading_date().strftime("%Y-%m-%d")
+    hist_data = get_history_candidates(target_date)
+
+    if hist_data and hist_data.get("candidates"):
+        candidates = [c for c in hist_data["candidates"] if c.get("score", 0) >= min_score]
+        summary = hist_data.get("summary", {})
+    else:
+        market_data = fetch_all_sharia_data(force_refresh=False)
+        diag = run_screener_diagnostics(market_data)
+        candidates = [c for c in diag["candidates"] if c.get("score", 0) >= min_score]
+        summary = {"total_scanned": len(market_data), "total_candidates": len(candidates)}
+        save_screening_snapshot(target_date, diag["candidates"], summary)
+
+    excel_io = generate_excel_export(target_date, candidates, summary)
+    filename = f"Radar_Saham_Syariah_{target_date}.xlsx"
+    return Response(
+        content=excel_io.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+    )
 
 
 @app.get("/api/stock/{code}")

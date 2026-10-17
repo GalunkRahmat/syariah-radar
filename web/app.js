@@ -7,6 +7,8 @@ let searchKeyword = '';
 let currentOpenStock = null;
 let chartInstance = null;
 let deferredInstallPrompt = null;
+let selectedHistoryDate = '';
+let historyDatesList = [];
 
 // -------------------------------------------------------------
 // USER AUTHENTICATION & ACCESS CONTROL
@@ -97,6 +99,7 @@ async function handleLoginSubmit(event) {
       hideLoginScreen();
       updateUserBadge(data.username);
       showToast(`Selamat datang, ${data.username}!`);
+      loadHistoryDates();
       fetchResults(true);
     } else {
       errText.innerText = data.detail || 'Username atau password salah.';
@@ -139,6 +142,7 @@ async function checkAuthStatus() {
     if (res.ok) {
       hideLoginScreen();
       updateUserBadge(savedUser);
+      loadHistoryDates();
       fetchResults();
     } else {
       showLoginScreen('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
@@ -146,6 +150,7 @@ async function checkAuthStatus() {
   } catch (e) {
     hideLoginScreen();
     updateUserBadge(savedUser);
+    loadHistoryDates();
     fetchResults();
   }
 }
@@ -447,12 +452,170 @@ function clearSearch() {
 }
 
 // -------------------------------------------------------------
+// HISTORICAL DATABASE & ARCHIVE MANAGEMENT
+// -------------------------------------------------------------
+async function loadHistoryDates() {
+  const select = document.getElementById('historyDateSelect');
+  if (!select) return;
+
+  try {
+    const res = await authFetch('/api/history/dates');
+    if (!res.ok) return;
+    const data = await res.json();
+    historyDatesList = Array.isArray(data) ? data : (data.dates || []);
+
+    const currentVal = selectedHistoryDate || select.value;
+    select.innerHTML = '<option value="">🟢 Terkini (Hari Ini)</option>';
+
+    historyDatesList.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.market_date;
+      const count = item.total_candidates !== undefined ? item.total_candidates : (item.candidate_count || 0);
+      opt.textContent = `📅 ${item.market_date} (${count} Saham)`;
+      if (item.market_date === currentVal) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn("Could not load history dates:", e);
+  }
+}
+
+async function handleHistoryDateChange(date) {
+  selectedHistoryDate = date || '';
+  const badge = document.getElementById('historicalBadge');
+  const exportBtn = document.getElementById('exportExcelBtn');
+
+  if (selectedHistoryDate) {
+    if (badge) {
+      badge.textContent = `Arsip: ${selectedHistoryDate}`;
+      badge.classList.remove('hidden');
+    }
+    if (exportBtn) {
+      exportBtn.innerHTML = `<i class="fa-solid fa-file-excel text-emerald-200"></i><span>Export Excel (${selectedHistoryDate})</span>`;
+    }
+
+    const stockList = document.getElementById('stockList');
+    if (stockList) {
+      stockList.innerHTML = `
+        <div class="text-center py-12 text-gray-400">
+          <i class="fa-solid fa-spinner fa-spin text-2xl text-emerald-400 mb-3"></i>
+          <p class="text-sm">Membuka arsip database tanggal ${selectedHistoryDate}...</p>
+        </div>
+      `;
+    }
+
+    try {
+      const res = await authFetch(`/api/history/results?date=${encodeURIComponent(selectedHistoryDate)}`);
+      if (!res.ok) throw new Error("Gagal mengambil data arsip tanggal tersebut");
+
+      const data = await res.json();
+      currentCandidates = data.candidates || [];
+      allTrackedStocks = data.candidates || [];
+
+      document.getElementById('statScanned').innerText = data.scanned_count || currentCandidates.length;
+      document.getElementById('statCandidates').innerText = currentCandidates.length;
+
+      const lowRiskCount = currentCandidates.filter(c => c.risk_level === 'LOW_RISK').length;
+      document.getElementById('statLowRisk').innerText = lowRiskCount;
+
+      const accumCount = currentCandidates.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION')).length;
+      document.getElementById('statAccumulation').innerText = accumCount;
+
+      populateCalculatorDropdown();
+      renderCandidates();
+      showToast(`Arsip ${selectedHistoryDate} dimuat (${currentCandidates.length} saham)`);
+    } catch (err) {
+      console.error("Error loading historical results:", err);
+      if (stockList) {
+        stockList.innerHTML = `
+          <div class="text-center py-8 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+            <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
+            <p class="font-semibold text-sm">Gagal memuat arsip tanggal ${selectedHistoryDate}</p>
+            <p class="text-xs text-gray-400 mt-1">${err.message}</p>
+            <button onclick="handleHistoryDateChange('${selectedHistoryDate}')" class="mt-3 px-3 py-1 bg-gray-800 text-xs rounded hover:bg-gray-700 text-white">Coba Lagi</button>
+          </div>
+        `;
+      }
+    }
+  } else {
+    if (badge) badge.classList.add('hidden');
+    if (exportBtn) {
+      exportBtn.innerHTML = `<i class="fa-solid fa-file-excel text-emerald-200"></i><span>Export Excel (.xlsx)</span>`;
+    }
+    fetchResults();
+  }
+}
+
+// -------------------------------------------------------------
+// EXCEL EXPORT HANDLER
+// -------------------------------------------------------------
+async function downloadExcelExport() {
+  const exportBtn = document.getElementById('exportExcelBtn');
+  const originalHtml = exportBtn ? exportBtn.innerHTML : '';
+  if (exportBtn) {
+    exportBtn.disabled = true;
+    exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-200"></i><span>Mengunduh...</span>';
+  }
+
+  showToast('Menyiapkan file Excel (.xlsx)...');
+
+  try {
+    let url = '/api/screener/export-excel';
+    if (selectedHistoryDate) {
+      url += `?date=${encodeURIComponent(selectedHistoryDate)}`;
+    }
+
+    const res = await authFetch(url);
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.detail || `Gagal mengunduh file Excel (${res.status})`);
+    }
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+
+    const dateLabel = selectedHistoryDate || (new Date()).toISOString().split('T')[0];
+    a.download = `Radar_Saham_Syariah_${dateLabel}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
+
+    showToast(`✅ File Excel (${a.download}) berhasil diunduh!`);
+  } catch (err) {
+    console.error("Excel download error:", err);
+    showToast(`⚠️ Gagal mengunduh Excel: ${err.message}`);
+  } finally {
+    if (exportBtn) {
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = originalHtml;
+    }
+  }
+}
+
+// -------------------------------------------------------------
 // FETCH SCREENER DATA
 // -------------------------------------------------------------
 async function fetchResults(forceRefresh = false) {
   const refreshBtn = document.getElementById('refreshBtn');
   const refreshIcon = document.getElementById('refreshIcon');
   const stockList = document.getElementById('stockList');
+
+  if (forceRefresh && selectedHistoryDate) {
+    selectedHistoryDate = '';
+    const dateSelect = document.getElementById('historyDateSelect');
+    if (dateSelect) dateSelect.value = '';
+    const badge = document.getElementById('historicalBadge');
+    if (badge) badge.classList.add('hidden');
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+      exportBtn.innerHTML = `<i class="fa-solid fa-file-excel text-emerald-200"></i><span>Export Excel (.xlsx)</span>`;
+    }
+  }
 
   if (refreshIcon) refreshIcon.classList.add('fa-spin');
   if (refreshBtn) refreshBtn.disabled = true;
@@ -477,6 +640,7 @@ async function fetchResults(forceRefresh = false) {
     updateWatchlistCounter();
     populateCalculatorDropdown();
     renderCandidates();
+    loadHistoryDates(); // refresh archive dates list with new snapshot
   } catch (err) {
     console.error("Error fetching results:", err);
     stockList.innerHTML = `

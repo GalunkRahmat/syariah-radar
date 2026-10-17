@@ -20,3 +20,9 @@ ENV/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Binaries & Local State
+cloudflared.exe
+data/sessions.json
+data/*.db
+

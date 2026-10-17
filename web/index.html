@@ -125,6 +125,10 @@
           <i class="fa-brands fa-telegram text-blue-400 text-sm"></i>
           <span class="hidden sm:inline">Telegram</span>
         </button>
+        <button onclick="downloadExcelExport()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow" title="Unduh Hasil Screening ke File Excel (.xlsx)">
+          <i class="fa-solid fa-file-excel text-emerald-400"></i>
+          <span class="hidden sm:inline">Excel</span>
+        </button>
         <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/40 flex items-center gap-1.5 transition shadow" title="Akses & Pasang di HP Android">
           <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
           <span class="hidden sm:inline">Pasang HP</span>
@@ -169,6 +173,26 @@
         <span class="text-[10px] text-gray-500 block">Anti-Pisau Jatuh</span>
       </div>
     </section>
+
+    <!-- HISTORICAL ARCHIVE & EXCEL TOOLBAR -->
+    <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-gray-400 flex items-center gap-1.5 font-medium">
+          <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i>
+          <span class="hidden sm:inline">Database Arsip:</span>
+        </span>
+        <select id="historyDateSelect" onchange="handleHistoryDateChange(this.value)" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
+          <option value="">🟢 Terkini (Hari Ini)</option>
+        </select>
+        <span id="historicalBadge" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">Arsip Historis</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="exportExcelBtn" onclick="downloadExcelExport()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-solid fa-file-excel text-emerald-200"></i>
+          <span>Export Excel (.xlsx)</span>
+        </button>
+      </div>
+    </div>
 
     <!-- SEARCH BAR -->
     <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 shadow-sm">
