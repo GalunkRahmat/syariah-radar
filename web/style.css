@@ -281,6 +281,17 @@ body.light-theme {
   box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.14) !important;
 }
 
+.light-theme .stock-card button {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #4b5563 !important;
+}
+
+.light-theme .stock-card button:hover {
+  background-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
 .light-theme .filter-pill {
   background-color: #ffffff;
   border-color: #e2e5e9;

@@ -1137,35 +1137,29 @@ function renderCandidates() {
         const isUp = s.change_pct >= 0;
         const changeColor = isUp ? 'text-emerald-400' : 'text-red-400';
         const changeSign = isUp ? '+' : '';
-        const avatarBg = getStockAvatarStyle(s.code, s.sector);
 
         diagHtml += `
           <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 md:p-5 shadow-sm space-y-3.5">
             <div class="flex items-start justify-between gap-3">
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="stock-avatar w-12 h-12 rounded-2xl ${avatarBg} border border-white/10 flex items-center justify-center font-black text-sm tracking-tight shrink-0 shadow-md">
-                  ${s.code}
+              <div class="space-y-1.5 min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xl md:text-2xl font-black text-white tracking-wide">${s.code}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
+                    ⚠️ Belum Lolos Sinyal Beli
+                  </span>
+                  <span class="text-xs text-gray-400 px-2 py-0.5 rounded-md bg-gray-800">${s.sector}</span>
                 </div>
-                <div class="space-y-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-lg md:text-xl font-black text-white tracking-wide">${s.code}</span>
-                    <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
-                      ⚠️ Belum Lolos Sinyal Beli
-                    </span>
-                    <span class="text-xs text-gray-400 px-2 py-0.5 rounded-md bg-gray-800">${s.sector}</span>
-                  </div>
-                  <p class="text-xs md:text-sm text-gray-300 truncate font-medium">${s.name}</p>
-                </div>
+                <p class="text-xs md:text-sm text-gray-300 font-medium truncate">${s.name}</p>
               </div>
 
               <div class="flex items-center gap-2 shrink-0">
-                <div class="text-right">
-                  <span class="text-lg md:text-xl font-black text-white font-mono block leading-tight">${formatIDR(s.price)}</span>
+                <button onclick="toggleWatchlist('${s.code}', event)" class="w-9 h-9 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60 shadow-sm" title="${isWatchlisted(s.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
+                  <i class="${isWatchlisted(s.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
+                </button>
+                <div class="text-right pl-1">
+                  <span class="text-xl md:text-2xl font-black text-white font-mono block leading-tight">${formatIDR(s.price)}</span>
                   <span class="inline-block mt-0.5 px-2 py-0.5 rounded-lg text-xs md:text-sm font-bold ${changeColor}">${changeSign}${s.change_pct}%</span>
                 </div>
-                <button onclick="toggleWatchlist('${s.code}', event)" class="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700" title="${isWatchlisted(s.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
-                  <i class="${isWatchlisted(s.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-sm"></i>
-                </button>
               </div>
             </div>
 
@@ -1283,45 +1277,35 @@ function renderCandidates() {
     const riskPctStr = plan.risk_pct ? `(-${plan.risk_pct}%)` : '';
     const tp1PctStr = plan.tp1_pct ? `(+${plan.tp1_pct}%)` : '';
 
-    const avatarBg = getStockAvatarStyle(c.code, c.sector);
-
     html += `
       <div class="stock-card bg-[#161b22] border border-gray-800 hover:border-emerald-500/40 rounded-2xl p-4 md:p-5 shadow-sm space-y-3.5 cursor-pointer" onclick='openModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
         
         <!-- HEADER ROW: TICKER, BADGES, PRICE & QUICK ACTIONS -->
         <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <!-- Emiten Avatar (Stockbit-Style Circle/Squircle Badge) -->
-            <div class="stock-avatar w-12 h-12 rounded-2xl ${avatarBg} border border-white/10 flex items-center justify-center font-black text-sm tracking-tight shrink-0 shadow-md">
-              ${c.code}
+          <div class="space-y-1.5 min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xl md:text-2xl font-black text-white tracking-wide">${c.code}</span>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] md:text-xs font-bold">ISSI</span>
+              ${riskBadge}
+              ${setupBadge}
+              ${bandarChip}
+              ${maBadge}
             </div>
-            <div class="space-y-1 min-w-0">
-              <div class="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                <span class="text-lg md:text-xl font-black text-white tracking-wide">${c.code}</span>
-                <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] md:text-xs font-bold">ISSI</span>
-                ${riskBadge}
-                ${setupBadge}
-                ${bandarChip}
-                ${maBadge}
-              </div>
-              <p class="text-xs md:text-sm text-gray-300 truncate font-medium">${c.name} <span class="text-gray-500">• ${c.sector}</span></p>
-            </div>
+            <p class="text-xs md:text-sm text-gray-300 font-medium truncate">${c.name} <span class="text-gray-500">• ${c.sector}</span></p>
           </div>
 
           <div class="flex items-center gap-2 shrink-0">
-            <div class="text-right">
-              <span class="text-lg md:text-xl font-black text-white font-mono block leading-tight">${formatIDR(c.price)}</span>
+            <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-9 h-9 rounded-xl bg-gray-800/80 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/60 shadow-sm" title="Catat ke Jurnal Trading (Simulasi Beli)">
+              <i class="fa-solid fa-book-bookmark text-xs"></i>
+            </button>
+            <button onclick="toggleWatchlist('${c.code}', event)" class="w-9 h-9 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60 shadow-sm" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
+              <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
+            </button>
+            <div class="text-right pl-1">
+              <span class="text-xl md:text-2xl font-black text-white font-mono block leading-tight">${formatIDR(c.price)}</span>
               <span class="inline-block mt-0.5 px-2 py-0.5 rounded-lg text-xs md:text-sm font-bold ${isUp ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
                 ${changeSign}${c.change_pct}%
               </span>
-            </div>
-            <div class="flex flex-col gap-1 pl-1">
-              <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-8 h-8 rounded-xl bg-gray-800/90 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/70" title="Catat ke Jurnal Trading (Simulasi Beli)">
-                <i class="fa-solid fa-book-bookmark text-xs"></i>
-              </button>
-              <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/70" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
-                <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
-              </button>
             </div>
           </div>
         </div>
