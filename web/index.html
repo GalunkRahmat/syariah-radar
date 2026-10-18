@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.9.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.9.1">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.9.0') {
+          if (key !== 'syariah-radar-v1.9.1') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -120,53 +120,52 @@
   </div>
 
   <!-- TOP APP BAR -->
-  <!-- TOP APP BAR -->
   <header class="sticky top-0 z-40 bg-[#161b22]/95 backdrop-blur border-b border-gray-800 px-3 md:px-6 py-2.5 md:py-3 shadow-md">
     <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
       <!-- LOGO & BRANDING (DESKTOP & MOBILE) -->
-      <div class="flex items-center space-x-2 md:space-x-2.5 shrink-0">
-        <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold shadow-inner shrink-0">
-          <i class="fa-solid fa-shield-halved text-base md:text-lg"></i>
+      <div class="flex items-center space-x-2.5 shrink-0">
+        <div class="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold shadow-inner shrink-0">
+          <i class="fa-solid fa-shield-halved text-lg md:text-xl"></i>
         </div>
         <div class="whitespace-nowrap">
-          <h1 class="text-sm md:text-base font-bold text-white leading-tight flex items-center gap-1.5">
+          <h1 class="text-base md:text-lg font-black text-white leading-tight flex items-center gap-1.5">
             <span>Syariah Radar Pro</span>
-            <span class="text-[9px] md:text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v1.0</span>
+            <span class="text-[10px] md:text-xs uppercase font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v1.0</span>
           </h1>
-          <p class="text-[10px] md:text-[11px] text-gray-400 flex items-center gap-1.5">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <p class="text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>BEI Syariah • 3-Pilar Validasi</span>
           </p>
         </div>
       </div>
 
-      <!-- DESKTOP TOP ACTION BUTTONS (hidden on mobile, shown on md+) -->
-      <div class="hidden md:flex items-center gap-1.5">
+      <!-- DESKTOP TOP ACTION BUTTONS (hidden on mobile, shown on lg+) -->
+      <div class="hidden lg:flex items-center gap-2">
         <!-- SCAN ACTION BUTTON -->
-        <button id="refreshBtn" onclick="fetchResults(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm" title="Scan Ulang Seluruh Pasar BEI">
+        <button id="refreshBtn" onclick="fetchResults(true)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm" title="Scan Ulang Seluruh Pasar BEI">
           <i class="fa-solid fa-arrows-rotate text-emerald-100" id="refreshIcon"></i>
           <span>Scan Pasar</span>
         </button>
 
         <!-- KALKULATOR BUTTON -->
-        <button onclick="openStandaloneCalcModal()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Kalkulator Lot Sizing">
+        <button onclick="openStandaloneCalcModal()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold border border-gray-700 flex items-center gap-2 transition" title="Kalkulator Lot Sizing">
           <i class="fa-solid fa-calculator text-emerald-400"></i>
           <span>Kalkulator</span>
         </button>
 
         <!-- JURNAL TRADING BUTTON -->
-        <button onclick="openJournalModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 flex items-center gap-1.5 transition shadow-sm" title="Jurnal Trading & Portofolio Simulator">
+        <button onclick="openJournalModal()" class="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 flex items-center gap-2 transition shadow-sm" title="Jurnal Trading & Portofolio Simulator">
           <i class="fa-solid fa-book-bookmark text-emerald-400"></i>
           <span>Jurnal</span>
-          <span id="desktopJournalBadge" class="hidden px-1.5 py-0.2 rounded-full bg-emerald-500 text-black text-[9px] font-bold">0</span>
+          <span id="desktopJournalBadge" class="hidden px-1.5 py-0.2 rounded-full bg-emerald-500 text-black text-[10px] font-bold">0</span>
         </button>
 
         <!-- ADMIN TOOLS DROPDOWN (ADMIN ONLY) -->
         <div id="adminMenuContainer" class="admin-only relative hidden">
-          <button id="adminDropdownBtn" onclick="toggleAdminDropdown(event)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 flex items-center gap-1.5 transition shadow-sm" title="Menu Manajemen Administrator">
+          <button id="adminDropdownBtn" onclick="toggleAdminDropdown(event)" class="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 flex items-center gap-2 transition shadow-sm" title="Menu Manajemen Administrator">
             <i class="fa-solid fa-user-shield text-emerald-400"></i>
             <span>Menu Admin</span>
-            <i class="fa-solid fa-chevron-down text-[9px] text-emerald-400 ml-0.5"></i>
+            <i class="fa-solid fa-chevron-down text-[10px] text-emerald-400 ml-0.5"></i>
           </button>
           
           <div id="adminDropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
@@ -202,106 +201,106 @@
         </div>
 
         <!-- PASANG HP BUTTON -->
-        <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition" title="Akses & Pasang di HP Android">
+        <button id="installAppBtn" onclick="handleInstallAppClick()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold border border-gray-700 flex items-center gap-2 transition" title="Akses & Pasang di HP Android">
           <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
           <span>Pasang HP</span>
         </button>
 
         <!-- THEME TOGGLE BUTTON -->
-        <button id="themeToggleBtn" onclick="toggleTheme()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-amber-400 text-xs font-semibold border border-gray-700 flex items-center gap-1.5 transition shadow-sm" title="Ganti Mode Tampilan (Terang / Gelap)">
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-amber-400 text-xs font-semibold border border-gray-700 flex items-center gap-2 transition shadow-sm" title="Ganti Mode Tampilan (Terang / Gelap)">
           <i id="themeToggleIcon" class="fa-solid fa-sun text-amber-400 text-xs"></i>
           <span id="themeToggleText" class="text-gray-200">Terang</span>
         </button>
 
         <!-- NOTIFIKASI HP BUTTON -->
-        <button id="notifBellBtn" onclick="openNotificationModal()" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP (Jam 16:15 WIB)">
-          <i class="fa-solid fa-bell text-xs"></i>
-          <span id="notifActiveDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+        <button id="notifBellBtn" onclick="openNotificationModal()" class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP (Jam 16:15 WIB)">
+          <i class="fa-solid fa-bell text-sm"></i>
+          <span id="notifActiveDot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400"></span>
         </button>
 
         <!-- USER PROFILE BADGE & LOGOUT -->
-        <div id="userHeaderBadge" class="hidden flex items-center gap-1.5 pl-2 border-l border-gray-700">
-          <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-800/80 border border-gray-700/60 text-xs">
-            <i class="fa-solid fa-user-circle text-emerald-400"></i>
-            <span id="loggedInUserName" class="text-white font-semibold">Galunk</span>
+        <div id="userHeaderBadge" class="hidden flex items-center gap-2 pl-2 border-l border-gray-700">
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-gray-800/80 border border-gray-700/60 text-xs font-semibold">
+            <i class="fa-solid fa-user-circle text-emerald-400 text-sm"></i>
+            <span id="loggedInUserName" class="text-white">Galunk</span>
           </div>
-          <button onclick="handleLogout()" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center text-xs border border-gray-700 transition" title="Keluar / Logout">
+          <button onclick="handleLogout()" class="w-8 h-8 rounded-xl bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center text-xs border border-gray-700 transition" title="Keluar / Logout">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
       </div>
 
-      <!-- MOBILE TOP ACTION BUTTONS (shown on mobile <md) -->
-      <div class="flex md:hidden items-center gap-1.5">
-        <button id="mobileNotifBtn" onclick="openNotificationModal()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP">
-          <i class="fa-solid fa-bell text-xs"></i>
-          <span id="mobileNotifActiveDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+      <!-- MOBILE TOP ACTION BUTTONS (shown on mobile & tablet <lg) -->
+      <div class="flex lg:hidden items-center gap-2">
+        <button id="mobileNotifBtn" onclick="openNotificationModal()" class="w-9 h-9 rounded-xl bg-gray-800 text-gray-300 hover:text-emerald-400 flex items-center justify-center border border-gray-700 transition relative" title="Notifikasi Sinyal HP">
+          <i class="fa-solid fa-bell text-sm"></i>
+          <span id="mobileNotifActiveDot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
         </button>
-        <button id="mobileThemeToggleBtn" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-gray-800 text-amber-400 hover:text-amber-300 flex items-center justify-center border border-gray-700 transition" title="Ganti Mode Terang / Gelap">
-          <i id="mobileThemeToggleIcon" class="fa-solid fa-sun text-xs text-amber-400"></i>
+        <button id="mobileThemeToggleBtn" onclick="toggleTheme()" class="w-9 h-9 rounded-xl bg-gray-800 text-amber-400 hover:text-amber-300 flex items-center justify-center border border-gray-700 transition" title="Ganti Mode Terang / Gelap">
+          <i id="mobileThemeToggleIcon" class="fa-solid fa-sun text-sm text-amber-400"></i>
         </button>
-        <button onclick="toggleMobileSearch()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 hover:text-white flex items-center justify-center border border-gray-700 transition" title="Cari Saham">
-          <i class="fa-solid fa-magnifying-glass text-xs text-emerald-400"></i>
+        <button onclick="toggleMobileSearch()" class="w-9 h-9 rounded-xl bg-gray-800 text-gray-300 hover:text-white flex items-center justify-center border border-gray-700 transition" title="Cari Saham">
+          <i class="fa-solid fa-magnifying-glass text-sm text-emerald-400"></i>
         </button>
-        <button id="mobileRefreshBtn" onclick="fetchResults(true)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/40 flex items-center gap-1 text-xs transition" title="Scan Ulang Pasar">
+        <button id="mobileRefreshBtn" onclick="fetchResults(true)" class="px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center gap-1.5 text-xs transition" title="Scan Ulang Pasar">
           <i class="fa-solid fa-arrows-rotate text-emerald-400 text-xs" id="mobileRefreshIcon"></i>
-          <span class="text-[11px]">Scan</span>
+          <span>Scan</span>
         </button>
       </div>
     </div>
   </header>
 
   <!-- MAIN CONTAINER -->
-  <main class="max-w-6xl mx-auto px-3 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
+  <main class="max-w-6xl mx-auto px-3.5 md:px-6 py-4 space-y-4">
 
-    <!-- SUMMARY METRICS -->
-    <section class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-2.5">
-      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 md:p-3 shadow-sm">
-        <span class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-wider block">Total Saham Radar</span>
-        <span class="text-lg md:text-xl font-bold text-white" id="statScanned">-</span>
-        <span class="text-[9px] md:text-[10px] text-gray-500 block truncate">JII & JII70 Terkurasi</span>
+    <!-- SUMMARY METRICS (STOCKBIT STYLE BIG & BOLD CARDS) -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3.5 md:p-4 shadow-sm">
+        <span class="text-xs md:text-sm text-gray-400 uppercase tracking-wider font-semibold block mb-1">Total Saham Radar</span>
+        <span class="text-2xl md:text-3xl font-black text-white block leading-tight mb-1" id="statScanned">-</span>
+        <span class="text-xs text-gray-400 block truncate font-medium">JII & JII70 Terkurasi</span>
       </div>
-      <div class="bg-[#161b22] border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-2.5 md:p-3 shadow-sm">
-        <span class="text-[10px] md:text-[11px] text-emerald-400 uppercase tracking-wider font-semibold block truncate">🛡️ Grade A+</span>
-        <span class="text-lg md:text-xl font-bold text-emerald-400" id="statLowRisk">-</span>
-        <span class="text-[9px] md:text-[10px] text-emerald-500/80 block truncate">Teknikal & Bandar Teruji</span>
+      <div class="bg-[#161b22] border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-3.5 md:p-4 shadow-sm">
+        <span class="text-xs md:text-sm text-emerald-400 uppercase tracking-wider font-bold block truncate mb-1">🛡️ Grade A+</span>
+        <span class="text-2xl md:text-3xl font-black text-emerald-400 block leading-tight mb-1" id="statLowRisk">-</span>
+        <span class="text-xs text-emerald-500/90 block truncate font-medium">Teknikal & Bandar Teruji</span>
       </div>
-      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 md:p-3 shadow-sm">
-        <span class="text-[10px] md:text-[11px] text-blue-400 uppercase tracking-wider block">Akumulasi Bandar</span>
-        <span class="text-lg md:text-xl font-bold text-blue-400" id="statAccumulation">-</span>
-        <span class="text-[9px] md:text-[10px] text-gray-500 block truncate">Smart Money Masuk</span>
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3.5 md:p-4 shadow-sm">
+        <span class="text-xs md:text-sm text-blue-400 uppercase tracking-wider font-semibold block mb-1">Akumulasi Bandar</span>
+        <span class="text-2xl md:text-3xl font-black text-blue-400 block leading-tight mb-1" id="statAccumulation">-</span>
+        <span class="text-xs text-gray-400 block truncate font-medium">Smart Money Masuk</span>
       </div>
-      <div class="bg-[#161b22] border border-gray-800 rounded-xl p-2.5 md:p-3 shadow-sm">
-        <span class="text-[10px] md:text-[11px] text-amber-400 uppercase tracking-wider block">Sinyal Lolos</span>
-        <span class="text-lg md:text-xl font-bold text-amber-400" id="statCandidates">-</span>
-        <span class="text-[9px] md:text-[10px] text-gray-500 block truncate">Anti-Falling Knife</span>
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3.5 md:p-4 shadow-sm">
+        <span class="text-xs md:text-sm text-amber-400 uppercase tracking-wider font-semibold block mb-1">Sinyal Lolos</span>
+        <span class="text-2xl md:text-3xl font-black text-amber-400 block leading-tight mb-1" id="statCandidates">-</span>
+        <span class="text-xs text-gray-400 block truncate font-medium">Anti-Falling Knife</span>
       </div>
     </section>
 
     <!-- HISTORICAL ARCHIVE & EXCEL TOOLBAR (DESKTOP VIEW) -->
-    <div class="hidden md:flex bg-[#161b22] border border-gray-800 rounded-xl p-2.5 flex-wrap items-center justify-between gap-2 shadow-sm">
-      <div class="flex items-center gap-2 text-xs">
-        <span class="text-gray-400 flex items-center gap-1.5 font-medium">
+    <div class="hidden lg:flex bg-[#161b22] border border-gray-800 rounded-2xl p-3 flex-wrap items-center justify-between gap-3 shadow-sm">
+      <div class="flex items-center gap-2.5 text-xs md:text-sm">
+        <span class="text-gray-400 flex items-center gap-2 font-medium">
           <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i>
           <span>Database Arsip:</span>
         </span>
-        <select id="historyDateSelect" onchange="handleHistoryDateChange(this.value)" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
+        <select id="historyDateSelect" onchange="handleHistoryDateChange(this.value)" class="bg-[#0e1117] border border-gray-700 rounded-xl px-3 py-2 text-white text-xs md:text-sm font-medium focus:outline-none focus:border-emerald-500">
           <option value="">🟢 Terkini (Hari Ini)</option>
         </select>
-        <span id="historicalBadge" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">Arsip Historis</span>
+        <span id="historicalBadge" class="hidden text-xs uppercase font-bold px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">Arsip Historis</span>
       </div>
       <div class="flex items-center gap-2">
-        <button id="exportExcelBtn" onclick="downloadExcelExport()" class="admin-only px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+        <button id="exportExcelBtn" onclick="downloadExcelExport()" class="admin-only px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs md:text-sm font-bold flex items-center gap-2 transition shadow-sm">
           <i class="fa-solid fa-file-excel text-emerald-200"></i>
           <span>Export Excel (.xlsx)</span>
         </button>
       </div>
     </div>
 
-    <!-- SEARCH BAR -->
-    <div id="searchContainer" class="bg-[#161b22] border border-gray-800 rounded-xl p-2 md:p-2.5 shadow-sm">
+    <!-- SEARCH BAR (STOCKBIT STYLE PROMINENT SEARCH) -->
+    <div id="searchContainer" class="bg-[#161b22] border border-gray-800 rounded-2xl p-2.5 md:p-3 shadow-sm">
       <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-sm"></i>
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 text-base"></i>
         <input 
           type="search" 
           id="searchInput" 
@@ -312,29 +311,29 @@
           spellcheck="false" 
           placeholder="Cari saham berdasarkan kode atau emiten (contoh: CPIN, AUTO, SIDO)..." 
           oninput="handleSearch()" 
-          class="w-full bg-[#0e1117] border border-gray-700 rounded-lg pl-9 pr-9 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition font-medium">
-        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1" title="Hapus Pencarian">
-          <i class="fa-solid fa-xmark text-xs"></i>
+          class="w-full bg-[#0e1117] border border-gray-700 rounded-xl pl-11 pr-10 py-3 text-sm md:text-base text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 transition font-medium">
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1" title="Hapus Pencarian">
+          <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
     </div>
 
     <!-- VIEW MODE SWITCHER: DAFTAR KARTU vs SEKTOR HEATMAP -->
     <div class="flex items-center justify-between gap-2 pt-0.5">
-      <div class="flex items-center gap-1 p-1 bg-[#161b22] border border-gray-800 rounded-xl text-xs w-full sm:w-auto shadow-sm">
-        <button id="viewModeListBtn" onclick="switchMainView('list')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-1.5 transition">
+      <div class="flex items-center gap-1.5 p-1.5 bg-[#161b22] border border-gray-800 rounded-2xl text-xs md:text-sm w-full sm:w-auto shadow-sm">
+        <button id="viewModeListBtn" onclick="switchMainView('list')" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-2 transition text-xs md:text-sm">
           <i class="fa-solid fa-list-ul"></i>
           <span>Daftar Kartu</span>
         </button>
-        <button id="viewModeHeatmapBtn" onclick="switchMainView('heatmap')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-gray-400 hover:text-white font-medium flex items-center justify-center gap-1.5 transition">
+        <button id="viewModeHeatmapBtn" onclick="switchMainView('heatmap')" class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-gray-400 hover:text-white font-medium flex items-center justify-center gap-2 transition text-xs md:text-sm">
           <i class="fa-solid fa-cubes-stacked"></i>
           <span>Sektor Heatmap</span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-semibold hidden xs:inline">Treemap</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold hidden xs:inline">Treemap</span>
         </button>
       </div>
 
-      <div class="hidden sm:flex items-center gap-2 text-xs">
-        <button onclick="openNotificationModal()" class="px-2.5 py-1.5 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-emerald-400 border border-gray-700 flex items-center gap-1.5 transition shadow-sm" title="Pengaturan Notifikasi HP">
+      <div class="hidden sm:flex items-center gap-2 text-xs md:text-sm">
+        <button onclick="openNotificationModal()" class="px-3 py-2 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-emerald-400 border border-gray-700 flex items-center gap-2 transition shadow-sm font-medium" title="Pengaturan Notifikasi HP">
           <i class="fa-solid fa-bell text-emerald-400"></i>
           <span id="notifToolbarStatus">Notifikasi HP (16:15)</span>
         </button>
@@ -342,7 +341,7 @@
     </div>
 
     <!-- FILTER TABS / PILLS (SWIPABLE ON MOBILE ALA STOCKBIT, WRAP ON DESKTOP) -->
-    <div id="filterPillsContainer" class="flex items-center gap-1.5 text-xs overflow-x-auto scrollbar-none py-1 -mx-3 px-3 md:mx-0 md:px-0 md:flex-wrap">
+    <div id="filterPillsContainer" class="flex items-center gap-2 text-xs md:text-sm overflow-x-auto scrollbar-none py-1.5 -mx-3.5 px-3.5 md:mx-0 md:px-0 md:flex-wrap">
       <button onclick="setFilter('WATCHLIST')" id="filter-WATCHLIST" class="filter-pill border-amber-500/40 text-amber-300 font-semibold flex items-center gap-1.5 shrink-0">
         <i class="fa-solid fa-star text-amber-400"></i>
         <span>Watchlist (<span id="watchlistCount">0</span>)</span>
@@ -1063,7 +1062,7 @@
                 <th class="py-2.5 px-2">Peran</th>
                 <th class="py-2.5 px-2">Masa Aktif</th>
                 <th class="py-2.5 px-2 hidden sm:table-cell">Status Perangkat</th>
-                <th class="py-2.5 px-2 hidden md:table-cell">Terakhir Login</th>
+                <th class="py-2.5 px-2 hidden lg:table-cell">Terakhir Login</th>
                 <th class="py-2.5 px-3 text-right">Aksi</th>
               </tr>
             </thead>
@@ -1149,33 +1148,33 @@
   </div>
 
   <!-- STOCKBIT-STYLE MOBILE BOTTOM NAVIGATION BAR (FIXED AT BOTTOM) -->
-  <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 z-40 bg-[#161b22]/98 backdrop-blur-md border-t border-gray-800 flex md:hidden items-center justify-around px-1 py-1 shadow-2xl">
+  <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 z-40 bg-[#161b22]/98 backdrop-blur-md border-t border-gray-800 flex lg:hidden items-center justify-around px-2 py-2 shadow-2xl">
     <button onclick="switchMobileTab('radar')" id="mobileNavRadar" class="mobile-nav-item active">
-      <i class="fa-solid fa-layer-group text-base"></i>
-      <span class="text-[10px] font-semibold">Radar</span>
+      <i class="fa-solid fa-layer-group text-lg md:text-xl"></i>
+      <span class="text-xs font-semibold">Radar</span>
     </button>
     <button onclick="switchMobileTab('watchlist')" id="mobileNavWatchlist" class="mobile-nav-item relative">
-      <i class="fa-solid fa-star text-base"></i>
-      <span class="text-[10px] font-medium">Watchlist</span>
-      <span id="mobileWatchlistBadge" class="hidden absolute top-0.5 right-3 w-4 h-4 rounded-full bg-amber-500 text-black text-[9px] font-extrabold flex items-center justify-center">0</span>
+      <i class="fa-solid fa-star text-lg md:text-xl"></i>
+      <span class="text-xs font-semibold">Watchlist</span>
+      <span id="mobileWatchlistBadge" class="hidden absolute top-0 right-3.5 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center">0</span>
     </button>
     <button onclick="switchMobileTab('journal')" id="mobileNavJournal" class="mobile-nav-item relative">
-      <i class="fa-solid fa-book-bookmark text-base"></i>
-      <span class="text-[10px] font-medium">Jurnal</span>
-      <span id="mobileJournalBadge" class="hidden absolute top-0.5 right-3 w-4 h-4 rounded-full bg-emerald-500 text-black text-[9px] font-extrabold flex items-center justify-center">0</span>
+      <i class="fa-solid fa-book-bookmark text-lg md:text-xl"></i>
+      <span class="text-xs font-semibold">Jurnal</span>
+      <span id="mobileJournalBadge" class="hidden absolute top-0 right-3.5 w-4 h-4 rounded-full bg-emerald-500 text-black text-[10px] font-black flex items-center justify-center">0</span>
     </button>
     <button onclick="switchMobileTab('calc')" id="mobileNavCalc" class="mobile-nav-item">
-      <i class="fa-solid fa-calculator text-base"></i>
-      <span class="text-[10px] font-medium">Kalkulator</span>
+      <i class="fa-solid fa-calculator text-lg md:text-xl"></i>
+      <span class="text-xs font-semibold">Kalkulator</span>
     </button>
     <button onclick="switchMobileTab('menu')" id="mobileNavMenu" class="mobile-nav-item">
-      <i class="fa-solid fa-bars text-base"></i>
-      <span class="text-[10px] font-medium">Menu</span>
+      <i class="fa-solid fa-bars text-lg md:text-xl"></i>
+      <span class="text-xs font-semibold">Menu</span>
     </button>
   </nav>
 
   <!-- MOBILE ARSIP & EXCEL BOTTOM SHEET -->
-  <div id="mobileHistoryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end justify-center p-0 md:hidden">
+  <div id="mobileHistoryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end justify-center p-0 lg:hidden">
     <div class="bg-[#161b22] border-t border-gray-700 w-full rounded-t-3xl p-5 space-y-4 shadow-2xl bottom-sheet-anim max-h-[85vh] overflow-y-auto">
       <div class="drag-handle"></div>
       <div class="flex items-center justify-between border-b border-gray-800 pb-3">
@@ -1218,7 +1217,7 @@
   </div>
 
   <!-- MOBILE MENU & AKUN BOTTOM SHEET -->
-  <div id="mobileMenuModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end justify-center p-0 md:hidden">
+  <div id="mobileMenuModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end justify-center p-0 lg:hidden">
     <div class="bg-[#161b22] border-t border-gray-700 w-full rounded-t-3xl p-5 space-y-4 shadow-2xl bottom-sheet-anim max-h-[85vh] overflow-y-auto">
       <div class="drag-handle"></div>
       
@@ -1696,6 +1695,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.9.0"></script>
+  <script src="/static/app.js?v=1.9.1"></script>
 </body>
 </html>

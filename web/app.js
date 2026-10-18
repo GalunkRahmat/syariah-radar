@@ -1026,6 +1026,33 @@ function setFilter(filterType) {
   renderCandidates();
 }
 
+// Helper: Emiten Avatar Gradient based on sector
+function getStockAvatarStyle(code, sector) {
+  const s = (sector || '').toLowerCase();
+  if (s.includes('energy') || s.includes('energi')) {
+    return 'bg-gradient-to-br from-amber-500 to-amber-700 text-amber-100 shadow-amber-900/30';
+  } else if (s.includes('basic') || s.includes('bahan')) {
+    return 'bg-gradient-to-br from-cyan-600 to-teal-800 text-cyan-100 shadow-teal-900/30';
+  } else if (s.includes('consumer non') || s.includes('primer')) {
+    return 'bg-gradient-to-br from-emerald-600 to-green-800 text-emerald-100 shadow-emerald-900/30';
+  } else if (s.includes('consumer') || s.includes('siklikal')) {
+    return 'bg-gradient-to-br from-blue-600 to-indigo-800 text-blue-100 shadow-blue-900/30';
+  } else if (s.includes('health') || s.includes('kesehatan')) {
+    return 'bg-gradient-to-br from-rose-500 to-pink-700 text-rose-100 shadow-rose-900/30';
+  } else if (s.includes('financial') || s.includes('keuangan')) {
+    return 'bg-gradient-to-br from-blue-700 to-sky-900 text-blue-100 shadow-sky-900/30';
+  } else if (s.includes('property') || s.includes('properti')) {
+    return 'bg-gradient-to-br from-purple-600 to-fuchsia-800 text-purple-100 shadow-purple-900/30';
+  } else if (s.includes('tech') || s.includes('teknologi')) {
+    return 'bg-gradient-to-br from-violet-600 to-indigo-900 text-violet-100 shadow-violet-900/30';
+  } else if (s.includes('infra') || s.includes('infrastruktur')) {
+    return 'bg-gradient-to-br from-teal-600 to-cyan-800 text-teal-100 shadow-cyan-900/30';
+  } else if (s.includes('transport') || s.includes('logistik')) {
+    return 'bg-gradient-to-br from-orange-500 to-amber-700 text-orange-100 shadow-orange-900/30';
+  }
+  return 'bg-gradient-to-br from-emerald-700 to-teal-900 text-emerald-100 shadow-emerald-900/30';
+}
+
 function renderCandidates() {
   const container = document.getElementById('stockList');
   let list = currentCandidates;
@@ -1071,10 +1098,10 @@ function renderCandidates() {
       const nonCandWatchlist = allTrackedStocks.filter(s => watchlist.includes(s.code) && !currentCandidates.some(c => c.code === s.code));
       if (nonCandWatchlist.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-12 bg-[#161b22] border border-gray-800 rounded-xl p-6 text-gray-400">
+          <div class="text-center py-12 bg-[#161b22] border border-gray-800 rounded-2xl p-6 text-gray-400">
             <i class="fa-regular fa-star text-4xl mb-3 text-amber-400"></i>
-            <h3 class="text-sm font-semibold text-gray-200">Watchlist Anda Masih Kosong</h3>
-            <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Klik ikon bintang (⭐) pada kartu saham mana pun untuk menyimpannya ke daftar pantauan pribadi Anda.</p>
+            <h3 class="text-base font-bold text-gray-200">Watchlist Anda Masih Kosong</h3>
+            <p class="text-xs md:text-sm text-gray-400 mt-1 max-w-sm mx-auto">Klik ikon bintang (⭐) pada kartu saham mana pun untuk menyimpannya ke daftar pantauan pribadi Anda.</p>
           </div>
         `;
         return;
@@ -1094,13 +1121,13 @@ function renderCandidates() {
 
     if (matchingTracked.length > 0) {
       let diagHtml = `
-        <div class="space-y-3">
-          <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200">
-            <div class="flex items-start gap-2.5">
-              <i class="fa-solid fa-shield-halved text-amber-400 text-lg mt-0.5"></i>
+        <div class="space-y-3.5">
+          <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs md:text-sm text-amber-200">
+            <div class="flex items-start gap-3">
+              <i class="fa-solid fa-shield-halved text-amber-400 text-xl mt-0.5 shrink-0"></i>
               <div>
-                <h4 class="font-bold text-amber-300 text-sm">Saham Terdaftar di Radar, Namun Belum Lolos Sinyal Beli Hari Ini</h4>
-                <p class="text-gray-400 mt-1">Sistem menyaring saham ini demi keamanan modal Anda agar terhindar dari risiko beli di fase turun tajam (*falling knife*) atau downtrend.</p>
+                <h4 class="font-bold text-amber-300 text-sm md:text-base">Saham Terdaftar di Radar, Namun Belum Lolos Sinyal Beli Hari Ini</h4>
+                <p class="text-gray-300 mt-1 leading-relaxed">Sistem menyaring saham ini demi keamanan modal Anda agar terhindar dari risiko beli di fase turun tajam (*falling knife*) atau downtrend.</p>
               </div>
             </div>
           </div>
@@ -1110,54 +1137,61 @@ function renderCandidates() {
         const isUp = s.change_pct >= 0;
         const changeColor = isUp ? 'text-emerald-400' : 'text-red-400';
         const changeSign = isUp ? '+' : '';
+        const avatarBg = getStockAvatarStyle(s.code, s.sector);
 
         diagHtml += `
-          <div class="bg-[#161b22] border border-gray-800 rounded-xl p-4 shadow-sm space-y-3">
-            <div class="flex items-start justify-between">
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-base font-bold text-white tracking-wide">${s.code}</span>
-                  <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
-                    ⚠️ Belum Lolos Sinyal Beli
-                  </span>
-                  <span class="text-[10px] text-gray-400 px-2 py-0.5 rounded bg-gray-800">${s.sector}</span>
+          <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 md:p-5 shadow-sm space-y-3.5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="stock-avatar w-12 h-12 rounded-2xl ${avatarBg} border border-white/10 flex items-center justify-center font-black text-sm tracking-tight shrink-0 shadow-md">
+                  ${s.code}
                 </div>
-                <p class="text-xs text-gray-400 mt-1">${s.name}</p>
+                <div class="space-y-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-lg md:text-xl font-black text-white tracking-wide">${s.code}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
+                      ⚠️ Belum Lolos Sinyal Beli
+                    </span>
+                    <span class="text-xs text-gray-400 px-2 py-0.5 rounded-md bg-gray-800">${s.sector}</span>
+                  </div>
+                  <p class="text-xs md:text-sm text-gray-300 truncate font-medium">${s.name}</p>
+                </div>
               </div>
-              <div class="flex items-center gap-2">
-                <button onclick="toggleWatchlist('${s.code}', event)" class="w-8 h-8 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60" title="${isWatchlisted(s.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
-                  <i class="${isWatchlisted(s.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
-                </button>
+
+              <div class="flex items-center gap-2 shrink-0">
                 <div class="text-right">
-                  <span class="text-base font-bold text-white font-mono block">${formatIDR(s.price)}</span>
-                  <span class="text-xs font-semibold ${changeColor}">${changeSign}${s.change_pct}%</span>
+                  <span class="text-lg md:text-xl font-black text-white font-mono block leading-tight">${formatIDR(s.price)}</span>
+                  <span class="inline-block mt-0.5 px-2 py-0.5 rounded-lg text-xs md:text-sm font-bold ${changeColor}">${changeSign}${s.change_pct}%</span>
                 </div>
+                <button onclick="toggleWatchlist('${s.code}', event)" class="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700" title="${isWatchlisted(s.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
+                  <i class="${isWatchlisted(s.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-sm"></i>
+                </button>
               </div>
             </div>
 
             <!-- DIAGNOSTIC REASONS BOX -->
-            <div class="bg-[#0e1117] p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
-              <span class="text-[11px] font-bold text-gray-300 block flex items-center gap-1.5">
+            <div class="bg-[#0e1117] p-3.5 rounded-2xl border border-gray-800 space-y-2 text-xs md:text-sm">
+              <span class="font-bold text-gray-300 block flex items-center gap-2">
                 <i class="fa-solid fa-clipboard-check text-amber-400"></i>
                 Diagnosa Sistem Radar Hari Ini:
               </span>
-              <ul class="space-y-1.5 text-gray-300 pl-1">
+              <ul class="space-y-1.5 text-gray-300 pl-1 text-xs md:text-sm">
                 ${(s.rejection_reasons || []).map(r => `<li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 font-bold">•</span><span>${r}</span></li>`).join('')}
               </ul>
-              <div class="pt-1.5 border-t border-gray-800/80 text-[11px] text-emerald-400 font-medium">
+              <div class="pt-2 border-t border-gray-800/80 text-xs md:text-sm text-emerald-400 font-medium">
                 💡 Saran Swing: ${s.safety_advice || 'Wait & See. Tunggu konfirmasi pantulan support (candle hijau/hammer) sebelum entry.'}
               </div>
             </div>
 
             <!-- ACTION BUTTONS -->
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-[11px] text-gray-500 font-mono">Turnover: ${s.turnover_str} • RSI: ${s.rsi || '-'}</span>
+            <div class="flex items-center justify-between pt-1 text-xs md:text-sm">
+              <span class="text-xs text-gray-400 font-mono">Turnover: ${s.turnover_str} • RSI: ${s.rsi || '-'}</span>
               <div class="flex items-center gap-2">
-                <button onclick='openModal(${JSON.stringify(s).replace(/'/g, "&apos;")})' class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-medium border border-gray-700 transition flex items-center gap-1.5">
+                <button onclick='openModal(${JSON.stringify(s).replace(/'/g, "&apos;")})' class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs md:text-sm font-semibold border border-gray-700 transition flex items-center gap-2 shadow-sm">
                   <i class="fa-solid fa-chart-line text-emerald-400"></i>
                   <span>Lihat Chart</span>
                 </button>
-                <button onclick='openStandaloneCalcModal("${s.code}")' class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-xs font-semibold border border-emerald-500/30 transition flex items-center gap-1.5">
+                <button onclick='openStandaloneCalcModal("${s.code}")' class="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-xl text-xs md:text-sm font-bold border border-emerald-500/30 transition flex items-center gap-2 shadow-sm">
                   <i class="fa-solid fa-calculator text-emerald-400"></i>
                   <span>Kalkulator</span>
                 </button>
@@ -1174,14 +1208,14 @@ function renderCandidates() {
 
     // Truly not in database
     container.innerHTML = `
-      <div class="text-center py-12 bg-[#161b22] border border-gray-800 rounded-xl p-6 text-gray-400">
+      <div class="text-center py-12 bg-[#161b22] border border-gray-800 rounded-2xl p-6 text-gray-400">
         <i class="fa-solid fa-magnifying-glass text-3xl mb-3 text-emerald-500/60"></i>
-        <h3 class="text-sm font-semibold text-gray-200">Tidak ada saham yang cocok</h3>
-        <p class="text-xs text-gray-500 mt-1">${searchKeyword ? `Saham "${searchKeyword.toUpperCase()}" belum terdaftar dalam 75 saham radar syariah.` : 'Coba pilih tab filter lain di atas atau lakukan scan ulang.'}</p>
+        <h3 class="text-base font-bold text-gray-200">Tidak ada saham yang cocok</h3>
+        <p class="text-xs md:text-sm text-gray-400 mt-1">${searchKeyword ? `Saham "${searchKeyword.toUpperCase()}" belum terdaftar dalam 75 saham radar syariah.` : 'Coba pilih tab filter lain di atas atau lakukan scan ulang.'}</p>
         ${searchKeyword ? `
           <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <button onclick="clearSearch()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs rounded-lg transition">Hapus Pencarian</button>
-            <button onclick="openAddStockModal('${searchKeyword.toUpperCase()}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+            <button onclick="clearSearch()" class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs md:text-sm font-medium rounded-xl transition">Hapus Pencarian</button>
+            <button onclick="openAddStockModal('${searchKeyword.toUpperCase()}')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs md:text-sm font-bold rounded-xl transition flex items-center gap-2 shadow">
               <i class="fa-solid fa-plus"></i>
               <span>Tambah ${searchKeyword.toUpperCase()} ke Radar</span>
             </button>
@@ -1201,32 +1235,32 @@ function renderCandidates() {
     // Setup Badge
     let setupBadge = '';
     if (c.setup_type === 'STAGE2_BREAKOUT') {
-      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-semibold">🚀 Breakout</span>';
+      setupBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] md:text-xs font-semibold">🚀 Breakout</span>';
     } else if (c.setup_type === 'UPTREND_PULLBACK') {
-      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[9px] font-semibold">📈 Pullback</span>';
+      setupBadge = '<span class="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[11px] md:text-xs font-semibold">📈 Pullback</span>';
     } else if (c.setup_type === 'RS_LEADER') {
-      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-semibold">👑 Leader >MA200</span>';
+      setupBadge = '<span class="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[11px] md:text-xs font-semibold">👑 Leader >MA200</span>';
     } else {
-      setupBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-semibold">⚡ Rebound</span>';
+      setupBadge = '<span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] md:text-xs font-semibold">⚡ Rebound</span>';
     }
 
     // Risk Badge
     let riskBadge = '';
     if (c.risk_level === 'LOW_RISK') {
-      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">🛡️ Grade A+</span>';
+      riskBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] md:text-xs font-bold">🛡️ Grade A+</span>';
     } else if (c.risk_level === 'MEDIUM_RISK') {
-      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-medium">⚖️ Moderat</span>';
+      riskBadge = '<span class="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] md:text-xs font-medium">⚖️ Moderat</span>';
     } else {
-      riskBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-medium">⚠️ Spekulatif</span>';
+      riskBadge = '<span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] md:text-xs font-medium">⚠️ Spekulatif</span>';
     }
 
     // Bandarmologi Badge
     const bandar = c.bandarmologi || {};
     let bandarChip = '';
     if (bandar.status === 'BIG_ACCUMULATION') {
-      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-700/60 text-[9px] font-semibold">💰 Akumulasi Jumbo</span>';
+      bandarChip = '<span class="px-2 py-0.5 rounded-md bg-emerald-950/70 text-emerald-400 border border-emerald-700/60 text-[11px] md:text-xs font-semibold">💰 Akumulasi Jumbo</span>';
     } else if (bandar.status === 'ACCUMULATION') {
-      bandarChip = '<span class="px-1.5 py-0.5 rounded bg-blue-950/70 text-blue-400 border border-blue-700/60 text-[9px] font-semibold">🕵️ Akumulasi</span>';
+      bandarChip = '<span class="px-2 py-0.5 rounded-md bg-blue-950/70 text-blue-400 border border-blue-700/60 text-[11px] md:text-xs font-semibold">🕵️ Akumulasi</span>';
     }
 
     // Fundamental Highlights
@@ -1238,8 +1272,8 @@ function renderCandidates() {
     if (!fundText) fundText = fund.cap_category || 'Saham Syariah';
 
     const maBadge = c.ma_aligned 
-      ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono border border-emerald-500/20">MA50>100>200</span>' 
-      : (c.is_above_ma200 ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 font-mono border border-blue-500/20">>MA200</span>' : '');
+      ? '<span class="text-[11px] md:text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 font-mono border border-emerald-500/20">MA50>100>200</span>' 
+      : (c.is_above_ma200 ? '<span class="text-[11px] md:text-xs px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 font-mono border border-blue-500/20">>MA200</span>' : '');
 
     // Trading Plan Strip (Stockbit Style)
     const plan = c.trading_plan || {};
@@ -1249,82 +1283,93 @@ function renderCandidates() {
     const riskPctStr = plan.risk_pct ? `(-${plan.risk_pct}%)` : '';
     const tp1PctStr = plan.tp1_pct ? `(+${plan.tp1_pct}%)` : '';
 
+    const avatarBg = getStockAvatarStyle(c.code, c.sector);
+
     html += `
-      <div class="stock-card bg-[#161b22] border border-gray-800 hover:border-emerald-500/40 rounded-2xl p-3 md:p-4 shadow-sm space-y-2.5 cursor-pointer" onclick='openModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
+      <div class="stock-card bg-[#161b22] border border-gray-800 hover:border-emerald-500/40 rounded-2xl p-4 md:p-5 shadow-sm space-y-3.5 cursor-pointer" onclick='openModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
         
-        <!-- HEADER ROW: TICKER, BADGES & PRICE -->
-        <div class="flex items-start justify-between gap-2">
-          <div class="space-y-1 min-w-0">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-base md:text-lg font-extrabold text-white tracking-wide">${c.code}</span>
-              <span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold">ISSI</span>
-              ${riskBadge}
-              ${setupBadge}
-              ${bandarChip}
-              ${maBadge}
+        <!-- HEADER ROW: TICKER, BADGES, PRICE & QUICK ACTIONS -->
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <!-- Emiten Avatar (Stockbit-Style Circle/Squircle Badge) -->
+            <div class="stock-avatar w-12 h-12 rounded-2xl ${avatarBg} border border-white/10 flex items-center justify-center font-black text-sm tracking-tight shrink-0 shadow-md">
+              ${c.code}
             </div>
-            <p class="text-xs text-gray-400 truncate">${c.name} • <span class="text-gray-500">${c.sector}</span></p>
+            <div class="space-y-1 min-w-0">
+              <div class="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                <span class="text-lg md:text-xl font-black text-white tracking-wide">${c.code}</span>
+                <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] md:text-xs font-bold">ISSI</span>
+                ${riskBadge}
+                ${setupBadge}
+                ${bandarChip}
+                ${maBadge}
+              </div>
+              <p class="text-xs md:text-sm text-gray-300 truncate font-medium">${c.name} <span class="text-gray-500">• ${c.sector}</span></p>
+            </div>
           </div>
 
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-8 h-8 rounded-xl bg-gray-800/80 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/60" title="Catat ke Jurnal Trading (Simulasi Beli)">
-              <i class="fa-solid fa-book-bookmark text-xs"></i>
-            </button>
-            <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/60" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
-              <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
-            </button>
+          <div class="flex items-center gap-2 shrink-0">
             <div class="text-right">
-              <span class="text-base md:text-lg font-bold text-white font-mono block">${formatIDR(c.price)}</span>
-              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] md:text-xs font-bold ${isUp ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
+              <span class="text-lg md:text-xl font-black text-white font-mono block leading-tight">${formatIDR(c.price)}</span>
+              <span class="inline-block mt-0.5 px-2 py-0.5 rounded-lg text-xs md:text-sm font-bold ${isUp ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
                 ${changeSign}${c.change_pct}%
               </span>
+            </div>
+            <div class="flex flex-col gap-1 pl-1">
+              <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-8 h-8 rounded-xl bg-gray-800/90 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/70" title="Catat ke Jurnal Trading (Simulasi Beli)">
+                <i class="fa-solid fa-book-bookmark text-xs"></i>
+              </button>
+              <button onclick="toggleWatchlist('${c.code}', event)" class="w-8 h-8 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-amber-400 flex items-center justify-center transition border border-gray-700/70" title="${isWatchlisted(c.code) ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}">
+                <i class="${isWatchlisted(c.code) ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-gray-400'} text-xs"></i>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- 3-PILLAR SCORE ROW (STOCKBIT CAPSULES) -->
-        <div class="grid grid-cols-4 gap-1.5 md:gap-2 bg-[#0e1117] p-2 rounded-xl border border-gray-800/80 text-center text-[10px] md:text-[11px]">
-          <div>
-            <span class="text-gray-500 text-[9px] md:text-[10px] block">Skor Total</span>
-            <span class="font-extrabold text-emerald-400">${c.score}/100</span>
+        <div class="grid grid-cols-4 gap-2 bg-[#0e1117] p-2.5 md:p-3 rounded-2xl border border-gray-800/80 text-center">
+          <div class="space-y-0.5">
+            <span class="text-gray-400 text-xs block font-medium">Skor Total</span>
+            <span class="text-sm md:text-base font-extrabold text-emerald-400">${c.score}/100</span>
           </div>
-          <div>
-            <span class="text-gray-500 text-[9px] md:text-[10px] block">Bandar</span>
-            <span class="font-bold ${c.bandar_score >= 65 ? 'text-blue-400' : 'text-gray-300'}">${c.bandar_score}/100</span>
+          <div class="space-y-0.5">
+            <span class="text-gray-400 text-xs block font-medium">Bandar</span>
+            <span class="text-sm md:text-base font-bold ${c.bandar_score >= 65 ? 'text-blue-400' : 'text-gray-300'}">${c.bandar_score}/100</span>
           </div>
-          <div>
-            <span class="text-gray-500 text-[9px] md:text-[10px] block">Fundamental</span>
-            <span class="font-bold ${c.fund_score >= 65 ? 'text-purple-400' : 'text-gray-300'}">${c.fund_score}/100</span>
+          <div class="space-y-0.5">
+            <span class="text-gray-400 text-xs block font-medium">Fundamental</span>
+            <span class="text-sm md:text-base font-bold ${c.fund_score >= 65 ? 'text-purple-400' : 'text-gray-300'}">${c.fund_score}/100</span>
           </div>
-          <div>
-            <span class="text-gray-500 text-[9px] md:text-[10px] block">Volume</span>
-            <span class="font-bold text-emerald-400">${c.vol_ratio}x</span>
+          <div class="space-y-0.5">
+            <span class="text-gray-400 text-xs block font-medium">Vol Spike</span>
+            <span class="text-sm md:text-base font-bold text-emerald-400">${c.vol_ratio}x</span>
           </div>
         </div>
 
         <!-- TRADING PLAN PREVIEW (STOCKBIT STYLE) -->
-        <div class="bg-[#0e1117] px-2.5 py-2 rounded-xl border border-gray-800/80 flex items-center justify-between text-[10px] md:text-[11px] font-mono">
-          <div class="flex items-center gap-1">
-            <span class="text-gray-400 text-[9px] block">Area Beli:</span>
-            <span class="text-white font-bold">${entryFormatted}</span>
+        <div class="bg-[#0e1117] px-3.5 py-2.5 rounded-2xl border border-gray-800/80 flex items-center justify-between text-xs md:text-sm font-mono flex-wrap gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-gray-400 text-xs font-sans font-medium">Area Beli:</span>
+            <span class="text-white font-bold text-xs md:text-sm">${entryFormatted}</span>
           </div>
-          <div class="flex items-center gap-1">
-            <span class="text-red-400/80 text-[9px] block">Stop Loss:</span>
-            <span class="text-red-400 font-bold">${slFormatted} <span class="text-[9px]">${riskPctStr}</span></span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-red-400 text-xs font-sans font-medium">Stop Loss:</span>
+            <span class="text-red-400 font-bold text-xs md:text-sm">${slFormatted} <span class="text-[11px] font-sans opacity-90">${riskPctStr}</span></span>
           </div>
-          <div class="flex items-center gap-1">
-            <span class="text-emerald-400/80 text-[9px] block">Target TP1:</span>
-            <span class="text-emerald-400 font-bold">${tp1Formatted} <span class="text-[9px]">${tp1PctStr}</span></span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-emerald-400 text-xs font-sans font-medium">Target TP1:</span>
+            <span class="text-emerald-400 font-bold text-xs md:text-sm">${tp1Formatted} <span class="text-[11px] font-sans opacity-90">${tp1PctStr}</span></span>
           </div>
         </div>
 
         <!-- FOOTER: METRIC & DETAIL CTA -->
-        <div class="flex items-center justify-between pt-0.5 text-xs">
-          <div class="text-[10px] md:text-[11px] text-gray-400 truncate max-w-[65%]">
-            <span class="text-gray-400 font-medium">${fundText}</span>
+        <div class="flex items-center justify-between pt-0.5 text-xs md:text-sm">
+          <div class="text-xs md:text-sm text-gray-300 truncate max-w-[65%] font-medium">
+            <span>${fundText}</span>
           </div>
-          <span class="text-[10px] md:text-[11px] font-semibold text-emerald-400 flex items-center gap-1 hover:underline shrink-0">
-            Chart & Lot <i class="fa-solid fa-chevron-right text-[8px]"></i>
+          <span class="text-xs md:text-sm font-bold text-emerald-400 flex items-center gap-1.5 hover:underline shrink-0">
+            <span>Chart & Lot</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
           </span>
         </div>
 
