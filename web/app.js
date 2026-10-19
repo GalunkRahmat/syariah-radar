@@ -301,7 +301,7 @@ async function handleLoginSubmit(event) {
   const expiredAction = document.getElementById('loginExpiredActionBox');
 
   const username = usernameInput.value.trim();
-  const password = passwordInput.value;
+  const password = passwordInput.value.trim();
   const device_id = getOrCreateDeviceId();
 
   submitBtn.disabled = true;
