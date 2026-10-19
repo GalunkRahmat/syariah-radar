@@ -529,6 +529,108 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   color: #1f2937 !important;
 }
 
+/* =============================================================
+   BROKER CATEGORY COLOR CODING (SEKURITAS STYLE)
+   - Asing: Merah (#ef4444)
+   - BUMN: Hijau (#10b981)
+   - Institusi Domestik: Ungu (#a855f7)
+   - Retail / Fast Trader: Kuning / Amber (#f59e0b)
+   ============================================================= */
+
+/* ASING: MERAH */
+.broker-code-asing {
+  color: #ef4444 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+.broker-badge-asing {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+/* BUMN: HIJAU */
+.broker-code-bumn {
+  color: #10b981 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+.broker-badge-bumn {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+}
+
+/* INSTITUSI DOMESTIK: UNGU */
+.broker-code-institusi {
+  color: #a855f7 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+}
+.broker-badge-institusi {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+}
+
+/* RETAIL: KUNING / AMBER */
+.broker-code-retail {
+  color: #f59e0b !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+.broker-badge-retail {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Light Theme Overrides for Sekuritas Colors */
+.light-theme .broker-code-asing {
+  color: #dc2626 !important;
+  text-shadow: none;
+}
+.light-theme .broker-badge-asing {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+}
+
+.light-theme .broker-code-bumn {
+  color: #059669 !important;
+  text-shadow: none;
+}
+.light-theme .broker-badge-bumn {
+  background-color: #d1fae5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.light-theme .broker-code-institusi {
+  color: #7e22ce !important;
+  text-shadow: none;
+}
+.light-theme .broker-badge-institusi {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border-color: #d8b4fe !important;
+}
+
+.light-theme .broker-code-retail {
+  color: #b45309 !important;
+  text-shadow: none;
+}
+.light-theme .broker-badge-retail {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #fcd34d !important;
+}
+
+
 
 
 

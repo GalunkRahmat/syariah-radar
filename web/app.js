@@ -3623,6 +3623,40 @@ function renderSectorHeatmap() {
 let currentBroksumStock = 'AUTO';
 let currentBroksumPeriod = '1D';
 
+function getBrokerCategoryStyle(category) {
+  const cat = (category || '').toUpperCase();
+  if (cat === 'ASING') {
+    return {
+      key: 'asing',
+      label: '🏛️ Asing',
+      codeClass: 'broker-code-asing',
+      badgeClass: 'broker-badge-asing'
+    };
+  } else if (cat === 'BUMN') {
+    return {
+      key: 'bumn',
+      label: '🇮🇩 BUMN',
+      codeClass: 'broker-code-bumn',
+      badgeClass: 'broker-badge-bumn'
+    };
+  } else if (cat === 'DOMESTIK' || cat === 'INSTITUSI') {
+    return {
+      key: 'institusi',
+      label: '🏢 Institusi',
+      codeClass: 'broker-code-institusi',
+      badgeClass: 'broker-badge-institusi'
+    };
+  } else {
+    // RETAIL / FAST TRADER / DEFAULT
+    return {
+      key: 'retail',
+      label: '👥 Retail',
+      codeClass: 'broker-code-retail',
+      badgeClass: 'broker-badge-retail'
+    };
+  }
+}
+
 function initBrokerSummaryView() {
   populateBroksumStockDropdown();
   const select = document.getElementById('broksumStockSelect');
@@ -3876,6 +3910,19 @@ function renderBrokerSummaryDetail(data) {
       </div>
     </div>
 
+    <!-- CATEGORY COLOR CODING LEGEND (SEKURITAS STYLE) -->
+    <div class="flex items-center justify-between flex-wrap gap-2 text-[11px] px-3 py-2 rounded-xl bg-[#0e1117] border border-gray-800 text-gray-400 shadow-sm">
+      <span class="font-semibold flex items-center gap-1.5 text-gray-300">
+        <i class="fa-solid fa-palette text-purple-400"></i> Warna Broker Sekuritas:
+      </span>
+      <div class="flex items-center gap-3.5 flex-wrap">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></span><b class="broker-code-asing">Merah:</b> Asing</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span><b class="broker-code-bumn">Hijau:</b> BUMN</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm"></span><b class="broker-code-institusi">Ungu:</b> Institusi</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span><b class="broker-code-retail">Kuning:</b> Retail</span>
+      </div>
+    </div>
+
     <!-- SIDE-BY-SIDE DUAL BROKER TABLES (BUYER vs SELLER) -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       
@@ -3898,14 +3945,16 @@ function renderBrokerSummaryDetail(data) {
         </div>
 
         <div class="space-y-2">
-          ${(data.buyers || []).map(b => `
+          ${(data.buyers || []).map(b => {
+            const st = getBrokerCategoryStyle(b.category);
+            return `
             <div class="p-2.5 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-emerald-500/40 transition flex items-center justify-between gap-2">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">#${b.rank}</span>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="font-extrabold text-white text-sm tracking-wide font-mono">${b.broker_code}</span>
-                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">${b.badge}</span>
+                    <span class="text-base tracking-wider font-mono ${st.codeClass}">${b.broker_code}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-md ${st.badgeClass} font-semibold">${b.badge || st.label}</span>
                   </div>
                   <div class="text-[11px] text-gray-400 truncate max-w-[150px] sm:max-w-[210px]" title="${b.broker_name}">${b.broker_name}</div>
                 </div>
@@ -3915,7 +3964,8 @@ function renderBrokerSummaryDetail(data) {
                 <div class="text-[11px] text-gray-400 font-mono">${b.lot_str} Lot • Avg <b class="text-white">Rp ${b.avg_price.toLocaleString('id-ID')}</b></div>
               </div>
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
 
@@ -3938,14 +3988,16 @@ function renderBrokerSummaryDetail(data) {
         </div>
 
         <div class="space-y-2">
-          ${(data.sellers || []).map(s => `
+          ${(data.sellers || []).map(s => {
+            const st = getBrokerCategoryStyle(s.category);
+            return `
             <div class="p-2.5 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-rose-500/40 transition flex items-center justify-between gap-2">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 font-black text-xs flex items-center justify-center shrink-0">#${s.rank}</span>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="font-extrabold text-white text-sm tracking-wide font-mono">${s.broker_code}</span>
-                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 font-medium">${s.badge}</span>
+                    <span class="text-base tracking-wider font-mono ${st.codeClass}">${s.broker_code}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-md ${st.badgeClass} font-semibold">${s.badge || st.label}</span>
                   </div>
                   <div class="text-[11px] text-gray-400 truncate max-w-[150px] sm:max-w-[210px]" title="${s.broker_name}">${s.broker_name}</div>
                 </div>
@@ -3955,7 +4007,8 @@ function renderBrokerSummaryDetail(data) {
                 <div class="text-[11px] text-gray-400 font-mono">${s.lot_str} Lot • Avg <b class="text-white">Rp ${s.avg_price.toLocaleString('id-ID')}</b></div>
               </div>
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
 
@@ -4011,8 +4064,16 @@ async function loadCandidatesBroksumQuickView(period = '1D') {
     }
 
     grid.innerHTML = candidates.map(c => {
-      const topBuyers = (c.buyers || []).slice(0, 2).map(b => b.broker_code).join(', ');
-      const topSellers = (c.sellers || []).slice(0, 2).map(s => s.broker_code).join(', ');
+      const topBuyersHtml = (c.buyers || []).slice(0, 2).map(b => {
+        const st = getBrokerCategoryStyle(b.category);
+        return `<span class="${st.codeClass}">${b.broker_code}</span>`;
+      }).join(', ');
+
+      const topSellersHtml = (c.sellers || []).slice(0, 2).map(s => {
+        const st = getBrokerCategoryStyle(s.category);
+        return `<span class="${st.codeClass}">${s.broker_code}</span>`;
+      }).join(', ');
+
       const isSelected = c.ticker === currentBroksumStock;
 
       return `
@@ -4040,12 +4101,12 @@ async function loadCandidatesBroksumQuickView(period = '1D') {
           <div class="grid grid-cols-2 gap-1.5 text-[11px] bg-gray-900/40 p-2 rounded-lg border border-gray-800/60 font-mono">
             <div>
               <span class="text-gray-400 text-[10px] block">Top Buyer:</span>
-              <span class="text-emerald-400 font-bold">${topBuyers || '-'}</span>
+              <span class="font-bold">${topBuyersHtml || '-'}</span>
               <span class="text-[10px] text-gray-500">(${c.top3_buyer_pct}%)</span>
             </div>
             <div>
               <span class="text-gray-400 text-[10px] block">Top Seller:</span>
-              <span class="text-rose-400 font-bold">${topSellers || '-'}</span>
+              <span class="font-bold">${topSellersHtml || '-'}</span>
               <span class="text-[10px] text-gray-500">(${c.top3_seller_pct}%)</span>
             </div>
           </div>
@@ -4054,8 +4115,6 @@ async function loadCandidatesBroksumQuickView(period = '1D') {
             <i class="fa-solid fa-users-viewfinder"></i>
             <span>Analisa Detail ${c.ticker} &rarr;</span>
           </button>
-        </div>
-      `;
     }).join('');
 
   } catch (err) {
