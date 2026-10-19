@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.9.2">
+  <link rel="stylesheet" href="/static/style.css?v=1.9.3">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -318,17 +318,22 @@
       </div>
     </div>
 
-    <!-- VIEW MODE SWITCHER: DAFTAR KARTU vs SEKTOR HEATMAP -->
-    <div class="flex items-center justify-between gap-2 pt-0.5">
-      <div class="flex items-center gap-1.5 p-1.5 bg-[#161b22] border border-gray-800 rounded-2xl text-xs md:text-sm w-full sm:w-auto shadow-sm">
-        <button id="viewModeListBtn" onclick="switchMainView('list')" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-2 transition text-xs md:text-sm">
+    <!-- VIEW MODE SWITCHER: DAFTAR KARTU vs SEKTOR HEATMAP vs BROKER SUMMARY -->
+    <div class="flex items-center justify-between gap-2 pt-0.5 overflow-x-auto scrollbar-none">
+      <div class="flex items-center gap-1.5 p-1.5 bg-[#161b22] border border-gray-800 rounded-2xl text-xs md:text-sm w-full sm:w-auto shadow-sm shrink-0">
+        <button id="viewModeListBtn" onclick="switchMainView('list')" class="flex-1 sm:flex-none px-3.5 md:px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 flex items-center justify-center gap-2 transition text-xs md:text-sm">
           <i class="fa-solid fa-list-ul"></i>
           <span>Daftar Kartu</span>
         </button>
-        <button id="viewModeHeatmapBtn" onclick="switchMainView('heatmap')" class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-gray-400 hover:text-white font-medium flex items-center justify-center gap-2 transition text-xs md:text-sm">
+        <button id="viewModeHeatmapBtn" onclick="switchMainView('heatmap')" class="flex-1 sm:flex-none px-3.5 md:px-4 py-2 rounded-xl text-gray-400 hover:text-white font-medium flex items-center justify-center gap-2 transition text-xs md:text-sm">
           <i class="fa-solid fa-cubes-stacked"></i>
           <span>Sektor Heatmap</span>
           <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold hidden xs:inline">Treemap</span>
+        </button>
+        <button id="viewModeBroksumBtn" onclick="switchMainView('broksum')" class="flex-1 sm:flex-none px-3.5 md:px-4 py-2 rounded-xl text-gray-400 hover:text-white font-medium flex items-center justify-center gap-2 transition text-xs md:text-sm">
+          <i class="fa-solid fa-users-viewfinder text-purple-400"></i>
+          <span>Broker Summary</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold hidden xs:inline">Top 3</span>
         </button>
       </div>
 
@@ -420,6 +425,74 @@
       <!-- Sector Grid / Treemap Blocks -->
       <div id="heatmapGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- BROKER SUMMARY & TOP 3 BROKER FLOW CONTAINER (TOGGLEABLE) -->
+    <div id="brokerSummaryContainer" class="hidden space-y-4">
+      <!-- Control Bar: Stock Selector & Period Pills -->
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-3.5 md:p-4 space-y-3.5 shadow-md">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
+              <i class="fa-solid fa-users-viewfinder text-purple-400"></i>
+              <span>Broker Summary & Bandarmologi Flow (Top 3 Broker)</span>
+            </h3>
+            <p class="text-xs text-gray-400 mt-0.5">Pantau broker pemegang terbanyak (Top 3 Buyer vs Seller) untuk konfirmasi sebelum buy.</p>
+          </div>
+
+          <!-- Quick Stock Dropdown Selector -->
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label class="text-xs text-gray-400 font-semibold whitespace-nowrap">Pilih Saham:</label>
+            <select id="broksumStockSelect" onchange="loadBrokerSummary(this.value, currentBroksumPeriod)" class="w-full sm:w-60 bg-[#0e1117] border border-gray-700 rounded-xl px-3 py-2 text-white text-xs md:text-sm font-bold focus:outline-none focus:border-purple-500 transition">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Period Selector (Stockbit Style: 1D, Kemarin, 7D, 1M, 3M, 6M) -->
+        <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-gray-800/80">
+          <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 w-full sm:w-auto">
+            <span class="text-xs text-gray-400 font-semibold mr-1 shrink-0"><i class="fa-solid fa-calendar-days text-purple-400"></i> Periode:</span>
+            <button onclick="setBroksumPeriod('1D')" id="broksum-period-1D" class="broksum-period-pill active">Hari Ini (1D)</button>
+            <button onclick="setBroksumPeriod('YESTERDAY')" id="broksum-period-YESTERDAY" class="broksum-period-pill">Kemarin</button>
+            <button onclick="setBroksumPeriod('7D')" id="broksum-period-7D" class="broksum-period-pill">7 Hari (1W)</button>
+            <button onclick="setBroksumPeriod('1M')" id="broksum-period-1M" class="broksum-period-pill">1 Bulan (1M)</button>
+            <button onclick="setBroksumPeriod('3M')" id="broksum-period-3M" class="broksum-period-pill">3 Bulan (3M)</button>
+            <button onclick="setBroksumPeriod('6M')" id="broksum-period-6M" class="broksum-period-pill">6 Bulan (6M)</button>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs text-gray-400 font-mono ml-auto">
+            <span class="text-[11px] text-gray-500">Rentang:</span>
+            <span id="broksumDateRangeText" class="text-white font-medium">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Detail Section (Hero Card + Dual Broker Tables) -->
+      <div id="broksumDetailContent" class="space-y-4">
+        <div class="text-center py-10 bg-[#161b22] border border-gray-800 rounded-2xl p-6 text-gray-400">
+          <i class="fa-solid fa-spinner fa-spin text-2xl text-purple-400 mb-2"></i>
+          <p class="text-xs md:text-sm">Memuat data broker summary & bandarmologi...</p>
+        </div>
+      </div>
+
+      <!-- Candidates Broker Comparison Section -->
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 space-y-3.5 shadow-md">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h4 class="font-bold text-white text-xs md:text-sm flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-emerald-400"></i>
+              <span>Top 3 Broker Kandidat Radar Hari Ini (Perbandingan Cepat)</span>
+            </h4>
+            <p class="text-xs text-gray-400">Konfirmasi bandarmologi seluruh saham sinyal lolos untuk memvalidasi pilihan terbaik.</p>
+          </div>
+        </div>
+
+        <!-- Candidates Quick Broksum Grid -->
+        <div id="broksumCandidatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Rendered dynamically -->
+        </div>
       </div>
     </div>
 
@@ -741,6 +814,10 @@
               <span id="modalMFI" class="font-bold text-white">-</span>
             </div>
           </div>
+          <button type="button" onclick="closeModal(); if (currentOpenStock) openBrokerSummaryForStock(currentOpenStock.code);" class="w-full mt-2 py-2 px-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-users-viewfinder text-purple-400"></i>
+            <span>Cek Broker Summary & Bandarmologi (Top 3 Broker) &rarr;</span>
+          </button>
         </div>
 
         <!-- FUNDAMENTAL SYARIAH CHECKLIST -->
@@ -1268,6 +1345,19 @@
           <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
         </button>
 
+        <button onclick="closeMobileMenuModal(); switchMainView('broksum');" class="w-full p-3 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-gray-700 flex items-center justify-between transition">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-users-viewfinder"></i>
+            </div>
+            <div class="text-left">
+              <span class="font-semibold text-white block">Broker Summary (Top 3 Broker)</span>
+              <span class="text-[11px] text-gray-400">Pantau Top 3 akumulasi vs distribusi broker pemegang</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
+        </button>
+
         <button onclick="closeMobileMenuModal(); openNotificationModal();" class="w-full p-3 rounded-xl bg-[#0e1117] border border-gray-800 hover:border-gray-700 flex items-center justify-between transition">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
@@ -1695,6 +1785,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.9.2"></script>
+  <script src="/static/app.js?v=1.9.3"></script>
 </body>
 </html>

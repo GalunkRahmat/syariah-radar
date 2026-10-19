@@ -44,6 +44,7 @@ from screener.history_db import (
     get_stock_timeline,
     generate_excel_export
 )
+from screener.broker_summary import calculate_broker_summary
 
 app = FastAPI(
     title="Syariah Swing Radar Pro API",
@@ -477,6 +478,69 @@ def get_stock_detail(code: str, user: str = Depends(require_auth)):
             "vol_ratio": float(latest.get('Vol_Ratio', 1.0))
         },
         "history": candles
+    }
+
+
+# -------------------------------------------------------------
+# BROKER SUMMARY & TOP 3 BROKER FLOW TRACKER
+# -------------------------------------------------------------
+@app.get("/api/broker-summary/{code}")
+def get_stock_broker_summary(
+    code: str,
+    period: str = Query("1D", description="Period: 1D, YESTERDAY, 7D, 1M, 3M, 6M"),
+    user: str = Depends(require_auth)
+):
+    code = code.upper()
+    market_data = fetch_all_sharia_data(force_refresh=False)
+    
+    if code not in market_data:
+        raise HTTPException(status_code=404, detail=f"Saham {code} tidak ditemukan dalam database radar.")
+
+    df = market_data[code]
+    market_date_str = get_latest_trading_date().strftime("%Y-%m-%d")
+    result = calculate_broker_summary(df, code, period=period, market_date=market_date_str)
+    
+    # Enrich with stock metadata
+    stocks = load_sharia_stocks()
+    stock_meta = next((s for s in stocks if s["code"] == code), None)
+    if stock_meta:
+        result["name"] = stock_meta.get("name", code)
+        result["sector"] = stock_meta.get("sector", "-")
+    else:
+        result["name"] = code
+        result["sector"] = "-"
+
+    return result
+
+
+@app.get("/api/broker-summary-candidates")
+def get_candidates_broker_summary(
+    period: str = Query("1D", description="Period: 1D, YESTERDAY, 7D, 1M, 3M, 6M"),
+    user: str = Depends(require_auth)
+):
+    market_data = fetch_all_sharia_data(force_refresh=False)
+    diag = run_screener_diagnostics(market_data)
+    candidates = diag.get("candidates", [])
+    market_date_str = get_latest_trading_date().strftime("%Y-%m-%d")
+
+    summaries = []
+    for c in candidates:
+        code = c["code"]
+        if code in market_data:
+            df = market_data[code]
+            bs = calculate_broker_summary(df, code, period=period, market_date=market_date_str)
+            bs["name"] = c.get("name", code)
+            bs["sector"] = c.get("sector", "-")
+            bs["radar_score"] = c.get("score", 0)
+            bs["risk_level"] = c.get("risk_level", "MEDIUM_RISK")
+            summaries.append(bs)
+
+    return {
+        "status": "ok",
+        "market_date": market_date_str,
+        "period": period,
+        "total_candidates": len(summaries),
+        "summaries": summaries
     }
 
 

@@ -418,7 +418,7 @@ body.light-theme {
 }
 
 /* Smooth transition when switching themes */
-body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journal-pill, .chart-ctl-btn {
+body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journal-pill, .chart-ctl-btn, .broksum-period-pill {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
 
@@ -461,6 +461,74 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #e5e7eb !important;
   color: #374151 !important;
 }
+
+/* Broker Summary Period Pills & Container Styling */
+.broksum-period-pill {
+  padding: 6px 13px;
+  border-radius: 9999px;
+  background-color: #0e1117;
+  border: 1px solid #30363d;
+  color: #9ca3af;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .broksum-period-pill {
+    padding: 7px 15px;
+    font-size: 12px;
+  }
+}
+
+.broksum-period-pill:hover {
+  border-color: #a855f7;
+  color: #ffffff;
+}
+
+.broksum-period-pill.active {
+  background-color: rgba(168, 85, 247, 0.22);
+  border-color: #a855f7;
+  color: #c084fc;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.25);
+}
+
+.light-theme .broksum-period-pill {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.light-theme .broksum-period-pill:hover {
+  border-color: #9333ea;
+  color: #111827;
+}
+
+.light-theme .broksum-period-pill.active {
+  background-color: rgba(168, 85, 247, 0.15);
+  border-color: #9333ea;
+  color: #7e22ce;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.18);
+}
+
+.light-theme #brokerSummaryContainer .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.light-theme #brokerSummaryContainer .bg-\[\#0e1117\] {
+  background-color: #f9fafb !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
 
 
 
