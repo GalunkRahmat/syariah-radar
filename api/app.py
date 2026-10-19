@@ -35,6 +35,7 @@ from api.auth import (
     reset_user_password,
     update_user_expiry,
     AccountExpiredError,
+    AuthenticationFailedError,
     DATA_DIR
 )
 from screener.history_db import (
@@ -160,11 +161,16 @@ def login(req: LoginRequest):
             status_code=403,
             detail=str(e)
         )
+    except AuthenticationFailedError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=str(e)
+        )
 
     if not user_info:
         raise HTTPException(
             status_code=401,
-            detail="Username atau Password salah! Akses ditolak."
+            detail="Username atau Password salah! Harap periksa kembali."
         )
     token = create_session(
         username=user_info["username"],

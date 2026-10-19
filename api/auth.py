@@ -43,6 +43,12 @@ class AccountExpiredError(Exception):
         self.expiry_str = expiry_str
 
 
+class AuthenticationFailedError(Exception):
+    """Raised when authentication fails due to invalid username or incorrect password."""
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 def format_expiry_date(ts: Optional[float]) -> str:
     """Formats an epoch timestamp into readable Indonesian date: e.g. '17 Nov 2026'."""
     if not ts:
@@ -145,87 +151,85 @@ def save_users(users: Dict[str, Any]) -> None:
         pass
 
 
-def authenticate_user(username: str, password: str, device_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def authenticate_user(username: str, password: str, device_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Authenticates username and password.
     Enforces membership validity (expires_at) and Single-Device Login for regular users.
     Admin (Galunk) is exempt and can login concurrently on multiple devices.
-    Returns user dict with expiry details on success, None on credential mismatch.
+    Returns user dict with expiry details on success.
+    Raises AuthenticationFailedError on missing, non-existent, or incorrect credentials.
     Raises AccountExpiredError if credentials are valid but membership has ended.
     """
-    users = load_users()
-    key = (username or "").strip().lower()
+    clean_user = (username or "").strip()
     clean_pwd = (password or "").strip()
+
+    if not clean_user:
+        raise AuthenticationFailedError("Silakan masukkan username Anda.")
+    if not clean_pwd:
+        raise AuthenticationFailedError("Silakan masukkan password Anda.")
+
+    users = load_users()
+    key = clean_user.lower()
 
     # Map username alias 'admin' to 'galunk'
     if key in ["admin", "administrator"]:
         key = "galunk"
 
-    # Master check for Admin Galunk (tolerant to whitespace, case in @ok, or without @ok)
-    is_admin_master = (key == "galunk" and (
-        clean_pwd in ["8924641@Ok", "8924641", "8924641@ok", "admin"] or
-        clean_pwd.lower() in ["8924641@ok", "8924641"]
-    ))
-
-    if is_admin_master:
-        return {
-            "username": "Galunk",
-            "role": "admin",
-            "session_version": 1,
-            "device_id": device_id,
-            "expires_at": None,
-            "is_lifetime": True,
-            "is_expired": False,
-            "days_remaining": None,
-            "expiry_str": "Selamanya (Lifetime)"
-        }
-
     user_data = users.get(key)
     if not user_data:
-        return None
+        raise AuthenticationFailedError("Username tidak terdaftar! Periksa kembali username Anda.")
 
-    salt = user_data["salt"]
-    expected_hash = user_data["hash"]
+    salt = user_data.get("salt", "")
+    expected_hash = user_data.get("hash", "")
     computed_hash, _ = hash_password(clean_pwd, salt)
 
-    if secrets.compare_digest(computed_hash, expected_hash):
-        role = user_data.get("role", "admin" if key == "galunk" else "user")
-        expiry_info = get_user_expiry_info(user_data)
+    # Strictly check password hash (or clean_pwd == '8924641@Ok' for galunk)
+    is_valid = secrets.compare_digest(computed_hash, expected_hash)
+    if not is_valid and key == "galunk":
+        if clean_pwd == "8924641@Ok":
+            is_valid = True
 
-        # Check membership expiration for non-admin members
-        if role != "admin" and expiry_info["is_expired"]:
-            raise AccountExpiredError(
-                f"Masa aktif akun Anda telah berakhir pada {expiry_info['expiry_str']}. Silakan hubungi Admin untuk perpanjangan akses.",
-                expiry_info["expiry_str"]
-            )
-
-        # Single Device Enforcement for regular users
-        if role != "admin":
-            new_version = user_data.get("session_version", 0) + 1
-            user_data["session_version"] = new_version
-            user_data["current_device_id"] = device_id
-            user_data["last_login"] = time.time()
-            save_users(users)
-            return {
-                "username": user_data["username"],
-                "role": role,
-                "session_version": new_version,
-                "device_id": device_id,
-                **expiry_info
-            }
+    if not is_valid:
+        if key == "galunk":
+            raise AuthenticationFailedError("Password salah! Harap periksa huruf besar/kecil dan karakter khusus (@Ok).")
         else:
-            # Admin can login simultaneously on multiple devices
-            user_data["last_login"] = time.time()
-            save_users(users)
-            return {
-                "username": user_data["username"],
-                "role": "admin",
-                "session_version": user_data.get("session_version", 1),
-                "device_id": device_id,
-                **expiry_info
-            }
+            raise AuthenticationFailedError("Password salah! Harap periksa kembali huruf besar/kecil password Anda.")
 
-    return None
+    role = user_data.get("role", "admin" if key == "galunk" else "user")
+    expiry_info = get_user_expiry_info(user_data)
+
+    # Check membership expiration for non-admin members
+    if role != "admin" and expiry_info["is_expired"]:
+        raise AccountExpiredError(
+            f"Masa aktif akun Anda telah berakhir pada {expiry_info['expiry_str']}. Silakan hubungi Admin untuk perpanjangan akses.",
+            expiry_info["expiry_str"]
+        )
+
+    # Single Device Enforcement for regular users
+    if role != "admin":
+        new_version = user_data.get("session_version", 0) + 1
+        user_data["session_version"] = new_version
+        user_data["current_device_id"] = device_id
+        user_data["last_login"] = time.time()
+        save_users(users)
+        return {
+            "username": user_data["username"],
+            "role": role,
+            "session_version": new_version,
+            "device_id": device_id,
+            **expiry_info
+        }
+    else:
+        # Admin can login simultaneously on multiple devices
+        user_data["last_login"] = time.time()
+        save_users(users)
+        return {
+            "username": user_data.get("username", "Galunk"),
+            "role": "admin",
+            "session_version": user_data.get("session_version", 1),
+            "device_id": device_id,
+            **expiry_info
+        }
 
 
 def create_session(username: str, role: str = "user", session_version: int = 1, device_id: Optional[str] = None) -> str:

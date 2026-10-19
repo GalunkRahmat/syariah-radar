@@ -292,7 +292,7 @@ function togglePasswordVisibility() {
 }
 
 async function handleLoginSubmit(event) {
-  event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   const usernameInput = document.getElementById('loginUsername');
   const passwordInput = document.getElementById('loginPassword');
   const submitBtn = document.getElementById('loginSubmitBtn');
@@ -4115,6 +4115,8 @@ async function loadCandidatesBroksumQuickView(period = '1D') {
             <i class="fa-solid fa-users-viewfinder"></i>
             <span>Analisa Detail ${c.ticker} &rarr;</span>
           </button>
+        </div>
+      `;
     }).join('');
 
   } catch (err) {
