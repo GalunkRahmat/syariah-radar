@@ -337,6 +337,7 @@ async function handleLoginSubmit(event) {
       showToast(`Selamat datang, ${data.username}!`);
       loadHistoryDates();
       fetchResults(true);
+      syncUserDataWithServer();
     } else {
       errText.innerText = data.detail || 'Username atau password salah.';
       if (expiredAction) {
@@ -414,6 +415,7 @@ async function checkAuthStatus() {
       applyRolePermissions(role);
       loadHistoryDates();
       fetchResults();
+      syncUserDataWithServer();
     } else {
       const errData = await res.json().catch(() => ({}));
       localStorage.removeItem('syariah_radar_token');
@@ -433,7 +435,74 @@ async function checkAuthStatus() {
     applyRolePermissions(savedRole);
     loadHistoryDates();
     fetchResults();
+    syncUserDataWithServer();
   }
+}
+
+let isSyncingUserData = false;
+let syncUserTimer = null;
+
+async function syncUserDataWithServer(forceOverwriteTrades = false) {
+  if (isSyncingUserData) return;
+  const token = localStorage.getItem('syariah_radar_token');
+  if (!token) return;
+
+  isSyncingUserData = true;
+  try {
+    const localWatchlist = watchlist || [];
+    const localTrades = (typeof getJournalTrades === 'function') ? getJournalTrades() : [];
+    const localCap = parseFloat(localStorage.getItem('user_trading_capital')) || 50000000;
+
+    const res = await authFetch('/api/user/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        watchlist: localWatchlist,
+        trades: localTrades,
+        capital: localCap,
+        overwrite_trades: forceOverwriteTrades
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'ok') {
+        // Hydrate Watchlist
+        if (Array.isArray(data.watchlist)) {
+          watchlist = data.watchlist;
+          localStorage.setItem('sharia_radar_watchlist', JSON.stringify(watchlist));
+          updateWatchlistCounter();
+          renderCandidates();
+          updateModalWatchlistBtn();
+        }
+
+        // Hydrate Jurnal Trades
+        if (Array.isArray(data.trades)) {
+          const key = 'syariah_radar_journal_' + getJournalUserKey();
+          localStorage.setItem(key, JSON.stringify(data.trades));
+          updateJournalBadges();
+          if (typeof renderJournalView === 'function') {
+            renderJournalView();
+          }
+        }
+
+        if (data.capital) {
+          localStorage.setItem('user_trading_capital', data.capital);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Background user sync skipped:", err);
+  } finally {
+    isSyncingUserData = false;
+  }
+}
+
+function debouncedSyncUserData(forceOverwriteTrades = false) {
+  if (syncUserTimer) clearTimeout(syncUserTimer);
+  syncUserTimer = setTimeout(() => {
+    syncUserDataWithServer(forceOverwriteTrades);
+  }, 400);
 }
 
 let watchlist = [];
@@ -476,6 +545,7 @@ function toggleWatchlist(code, event = null) {
   updateWatchlistCounter();
   renderCandidates();
   updateModalWatchlistBtn();
+  debouncedSyncUserData();
 }
 
 function toggleModalWatchlist() {
@@ -2621,11 +2691,12 @@ function getJournalTrades() {
   }
 }
 
-function saveJournalTrades(trades) {
+function saveJournalTrades(trades, forceOverwrite = false) {
   const key = 'syariah_radar_journal_' + getJournalUserKey();
   try {
     localStorage.setItem(key, JSON.stringify(trades));
     updateJournalBadges();
+    debouncedSyncUserData(forceOverwrite);
   } catch (e) {
     console.error("Failed to save journal trades:", e);
   }
@@ -2740,6 +2811,7 @@ function openJournalModal(filter = 'ALL') {
   if (modal) {
     modal.classList.remove('hidden');
     setJournalFilter(currentJournalFilter);
+    syncUserDataWithServer();
   }
 }
 
@@ -3416,7 +3488,7 @@ function deleteTrade(tradeId) {
   if (!confirm(`Hapus catatan transaksi ${name} dari jurnal?`)) return;
 
   const updated = trades.filter(item => item.id !== tradeId);
-  saveJournalTrades(updated);
+  saveJournalTrades(updated, true);
   showToast(`Catatan ${name} telah dihapus.`);
   renderJournalView();
 }

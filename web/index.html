@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.9.6">
+  <link rel="stylesheet" href="/static/style.css?v=1.9.7">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.9.6') {
+          if (key !== 'syariah-radar-v1.9.7') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -1530,6 +1530,9 @@
             </h3>
             <p class="text-[10px] md:text-xs text-gray-400 flex items-center gap-1.5 flex-wrap">
               <span>Catatan posisi beli, evaluasi otomatis P&L & Win Rate</span>
+              <span class="text-blue-400 font-mono text-[9px] md:text-[10px] bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 flex items-center gap-1">
+                <i class="fa-solid fa-cloud text-[9px]"></i> Cloud Sync
+              </span>
               <span id="journalLastUpdatedNotice" class="hidden text-emerald-400 font-mono text-[9px] md:text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                 <i class="fa-solid fa-arrows-rotate text-[8px] mr-1"></i>Update: <span id="journalLastUpdatedTime">--:--</span>
               </span>
@@ -1794,6 +1797,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.9.6"></script>
+  <script src="/static/app.js?v=1.9.7"></script>
 </body>
 </html>

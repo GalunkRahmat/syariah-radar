@@ -1,0 +1,48 @@
+{
+  "galunk": {
+    "watchlist": [
+      "AUTO"
+    ],
+    "trades": [
+      {
+        "id": "trade_seed_auto_001",
+        "code": "AUTO",
+        "name": "Astra Otoparts Tbk.",
+        "entryDate": "2026-10-19",
+        "entryPrice": 3020,
+        "lots": 1,
+        "stopLoss": 2827,
+        "tp1": 3360,
+        "tp2": 3572,
+        "notes": "UPTREND PULLBACK • Skor: 83/100",
+        "status": "OPEN",
+        "exitDate": null,
+        "exitPrice": null,
+        "realizedPnl": 0,
+        "realizedPnlPct": 0,
+        "createdAt": 1792425600000
+      },
+      {
+        "id": "trade_seed_tapg_002",
+        "code": "TAPG",
+        "name": "Triputra Agro Persada Tbk.",
+        "entryDate": "2026-10-19",
+        "entryPrice": 1685,
+        "lots": 1,
+        "stopLoss": 1644,
+        "tp1": 1859,
+        "tp2": 1945,
+        "notes": "UPTREND PULLBACK",
+        "status": "WIN",
+        "exitDate": "2026-10-20",
+        "exitPrice": 1855,
+        "realizedPnl": 17000,
+        "realizedPnlPct": 10.089020771513354,
+        "createdAt": 1792425600000,
+        "closedAt": 1792510000000
+      }
+    ],
+    "capital": 50000000,
+    "updated_at": 1792510150
+  }
+}

@@ -3,8 +3,10 @@ FastAPI Server for IDX Sharia Stock Screener
 Provides REST APIs for mobile applications, Telegram notifications, and serves the responsive web interface.
 """
 
+import os
 import json
 import time
+import shutil
 import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -664,6 +666,127 @@ def refresh_journal_prices(req: JournalPricesRequest, user: str = Depends(requir
         "prices": prices,
         "total_updated": len(prices),
         "updated_at": datetime.datetime.now().strftime("%H:%M:%S")
+    }
+
+
+# -------------------------------------------------------------
+# CLOUD USER DATA SYNC (WATCHLIST & JURNAL ACROSS DEVICES)
+# -------------------------------------------------------------
+USER_DATA_FILE = DATA_DIR / "user_data.json"
+
+
+def load_all_user_data() -> Dict[str, Any]:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    seed_file = PROJECT_ROOT / "data" / "user_data.json"
+    if os.environ.get("VERCEL") and not USER_DATA_FILE.exists() and seed_file.exists():
+        try:
+            shutil.copy2(seed_file, USER_DATA_FILE)
+        except Exception:
+            pass
+    if USER_DATA_FILE.exists():
+        try:
+            with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_all_user_data(data: Dict[str, Any]) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] Failed to save user_data: {e}")
+
+
+class UserSyncPayload(BaseModel):
+    watchlist: Optional[List[str]] = None
+    trades: Optional[List[Dict[str, Any]]] = None
+    capital: Optional[float] = None
+    overwrite_trades: Optional[bool] = False
+
+
+@app.get("/api/user/sync")
+def get_user_sync_data(user: str = Depends(require_auth)):
+    key = user.lower()
+    all_data = load_all_user_data()
+    user_rec = all_data.get(key, {})
+    return {
+        "status": "ok",
+        "username": user,
+        "watchlist": user_rec.get("watchlist", []),
+        "trades": user_rec.get("trades", []),
+        "capital": user_rec.get("capital", 50_000_000),
+        "updated_at": user_rec.get("updated_at")
+    }
+
+
+@app.post("/api/user/sync")
+def post_user_sync_data(payload: UserSyncPayload, user: str = Depends(require_auth)):
+    key = user.lower()
+    all_data = load_all_user_data()
+    user_rec = all_data.get(key, {})
+
+    # 1. Sync Watchlist (Merge union)
+    server_wl = user_rec.get("watchlist", [])
+    if payload.watchlist is not None:
+        merged_wl = []
+        for code in payload.watchlist + server_wl:
+            c = str(code).strip().upper()
+            if c and c not in merged_wl:
+                merged_wl.append(c)
+        user_rec["watchlist"] = merged_wl
+    else:
+        user_rec["watchlist"] = server_wl
+
+    # 2. Sync Trades
+    server_trades = user_rec.get("trades", [])
+    if payload.overwrite_trades and payload.trades is not None:
+        # Explicit overwrite by client
+        user_rec["trades"] = payload.trades
+    elif payload.trades is not None:
+        # Merge by unique trade id
+        server_trades_map = {t.get("id"): t for t in server_trades if t.get("id")}
+        for t in payload.trades:
+            tid = t.get("id")
+            if not tid:
+                continue
+            if tid not in server_trades_map:
+                server_trades_map[tid] = t
+            else:
+                existing = server_trades_map[tid]
+                if t.get("status") in ["WIN", "LOSS", "CLOSED"] and existing.get("status") == "OPEN":
+                    server_trades_map[tid] = t
+                elif (t.get("closedAt", 0) or 0) > (existing.get("closedAt", 0) or 0):
+                    server_trades_map[tid] = t
+                elif (t.get("createdAt", 0) or 0) >= (existing.get("createdAt", 0) or 0):
+                    server_trades_map[tid] = {**existing, **t}
+
+        final_trades = list(server_trades_map.values())
+        final_trades.sort(key=lambda x: (x.get("status") != "OPEN", -(x.get("createdAt", 0) or 0)))
+        user_rec["trades"] = final_trades
+    else:
+        user_rec["trades"] = server_trades
+
+    # 3. Sync Capital
+    if payload.capital is not None and payload.capital > 0:
+        user_rec["capital"] = payload.capital
+    elif "capital" not in user_rec:
+        user_rec["capital"] = 50_000_000
+
+    user_rec["updated_at"] = int(time.time())
+    all_data[key] = user_rec
+    save_all_user_data(all_data)
+
+    return {
+        "status": "ok",
+        "username": user,
+        "watchlist": user_rec["watchlist"],
+        "trades": user_rec["trades"],
+        "capital": user_rec["capital"],
+        "updated_at": user_rec["updated_at"]
     }
 
 
