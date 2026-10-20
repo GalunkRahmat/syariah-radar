@@ -2656,14 +2656,82 @@ function updateJournalBadges() {
   }
 }
 
+let journalRealtimePrices = {};
+
 function findStockLatestPrice(code) {
   if (!code) return null;
   const upper = code.toUpperCase();
+  if (journalRealtimePrices[upper] !== undefined && journalRealtimePrices[upper] !== null) {
+    return journalRealtimePrices[upper];
+  }
   const inCand = currentCandidates.find(c => c.code && c.code.toUpperCase() === upper);
   if (inCand && inCand.price) return inCand.price;
   const inTracked = allTrackedStocks.find(s => s.code && s.code.toUpperCase() === upper);
   if (inTracked && inTracked.price) return inTracked.price;
   return null;
+}
+
+async function refreshJournalPrices() {
+  const btn = document.getElementById('journalRefreshBtn');
+  const icon = document.getElementById('journalRefreshIcon');
+  const trades = getJournalTrades();
+  const openTrades = trades.filter(t => t.status === 'OPEN');
+  
+  const codes = [...new Set(openTrades.map(t => (t.code || '').trim().toUpperCase()))].filter(Boolean);
+
+  if (icon) icon.classList.add('fa-spin');
+  if (btn) btn.disabled = true;
+
+  try {
+    if (codes.length === 0) {
+      await fetchResults(true);
+      renderJournalView();
+      showToast("Data jurnal diperbarui. Tidak ada posisi terbuka yang perlu di-refresh.");
+      return;
+    }
+
+    const res = await authFetch('/api/journal/refresh-prices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes })
+    });
+
+    if (!res.ok) throw new Error("Gagal mengambil harga pasar terkini.");
+    const data = await res.json();
+
+    if (data.status === 'ok' && data.prices) {
+      Object.keys(data.prices).forEach(code => {
+        const p = data.prices[code];
+        journalRealtimePrices[code] = p;
+        const cMatch = currentCandidates.find(c => c.code && c.code.toUpperCase() === code);
+        if (cMatch) cMatch.price = p;
+        const sMatch = allTrackedStocks.find(s => s.code && s.code.toUpperCase() === code);
+        if (sMatch) sMatch.price = p;
+      });
+
+      renderJournalView();
+
+      const notice = document.getElementById('journalLastUpdatedNotice');
+      const timeEl = document.getElementById('journalLastUpdatedTime');
+      if (notice && timeEl) {
+        timeEl.innerText = data.updated_at || new Date().toLocaleTimeString('id-ID');
+        notice.classList.remove('hidden');
+      }
+
+      showToast(`Harga realtime ${Object.keys(data.prices).length} saham di Jurnal berhasil di-update!`);
+
+      // Background update screener
+      fetchResults(true).catch(e => console.warn("Background screener refresh:", e));
+    } else {
+      throw new Error(data.detail || "Gagal memperbarui harga.");
+    }
+  } catch (err) {
+    console.error("Error refreshing journal prices:", err);
+    showToast("Gagal memperbarui harga realtime. Coba lagi beberapa saat lagi.");
+  } finally {
+    if (icon) icon.classList.remove('fa-spin');
+    if (btn) btn.disabled = false;
+  }
 }
 
 function openJournalModal(filter = 'ALL') {

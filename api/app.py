@@ -5,8 +5,9 @@ Provides REST APIs for mobile applications, Telegram notifications, and serves t
 
 import json
 import time
+import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import pandas as pd
 import yfinance as yf
 from pydantic import BaseModel
@@ -596,6 +597,73 @@ def calculate_position_size(req: PositionSizeRequest, user: str = Depends(requir
         "potential_profit_tp1": int(profit_tp1),
         "potential_profit_tp2": int(profit_tp2),
         "risk_reward_ratio": "1 : 2.5"
+    }
+
+
+# -------------------------------------------------------------
+# JURNAL TRADING REALTIME PRICE REFRESH
+# -------------------------------------------------------------
+class JournalPricesRequest(BaseModel):
+    codes: List[str]
+
+
+@app.post("/api/journal/refresh-prices")
+def refresh_journal_prices(req: JournalPricesRequest, user: str = Depends(require_auth)):
+    codes = [c.strip().upper() for c in req.codes if c.strip()]
+    if not codes:
+        return {
+            "status": "ok",
+            "prices": {},
+            "total_updated": 0,
+            "updated_at": datetime.datetime.now().strftime("%H:%M:%S")
+        }
+
+    tickers = [f"{c}.JK" for c in codes]
+    prices = {}
+
+    try:
+        df = yf.download(tickers=tickers, period="5d", progress=False, threads=True)
+        for c in codes:
+            ticker_sym = f"{c}.JK"
+            val = None
+            try:
+                if ('Close', ticker_sym) in df.columns:
+                    series = df[('Close', ticker_sym)].dropna()
+                    if len(series) > 0:
+                        val = float(series.iloc[-1])
+                elif 'Close' in df.columns and ticker_sym in df['Close'].columns:
+                    series = df['Close'][ticker_sym].dropna()
+                    if len(series) > 0:
+                        val = float(series.iloc[-1])
+            except Exception:
+                pass
+
+            # Fallback to fast_info if needed
+            if val is None or pd.isna(val) or val <= 0:
+                try:
+                    t = yf.Ticker(ticker_sym)
+                    val = float(t.fast_info['last_price'])
+                except Exception:
+                    pass
+
+            if val is not None and not pd.isna(val) and val > 0:
+                prices[c] = round(val, 1)
+    except Exception as e:
+        print(f"[WARN] Batch price download failed: {e}. Trying individual fast_info fallback...")
+        for c in codes:
+            try:
+                t = yf.Ticker(f"{c}.JK")
+                val = float(t.fast_info['last_price'])
+                if val > 0:
+                    prices[c] = round(val, 1)
+            except Exception:
+                pass
+
+    return {
+        "status": "ok",
+        "prices": prices,
+        "total_updated": len(prices),
+        "updated_at": datetime.datetime.now().strftime("%H:%M:%S")
     }
 
 
