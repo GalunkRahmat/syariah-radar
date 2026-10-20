@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=1.9.7">
+  <link rel="stylesheet" href="/static/style.css?v=1.9.8">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v1.9.7') {
+          if (key !== 'syariah-radar-v1.9.8') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -356,6 +356,10 @@
       </button>
       <button onclick="setFilter('LOW_RISK')" id="filter-LOW_RISK" class="filter-pill border-emerald-500/40 text-emerald-400 font-semibold shrink-0">
         🛡️ Grade A+
+      </button>
+      <button onclick="setFilter('FOREIGN_FLOW')" id="filter-FOREIGN_FLOW" class="filter-pill border-rose-500/40 text-rose-300 font-semibold flex items-center gap-1.5 shrink-0">
+        <i class="fa-solid fa-landmark text-rose-400"></i>
+        <span>Akumulasi Asing (<span id="foreignFlowCount">0</span>)</span>
       </button>
       <button onclick="setFilter('BIG_ACCUMULATION')" id="filter-BIG_ACCUMULATION" class="filter-pill shrink-0">
         💰 Akumulasi Bandar
@@ -1797,6 +1801,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=1.9.7"></script>
+  <script src="/static/app.js?v=1.9.8"></script>
 </body>
 </html>

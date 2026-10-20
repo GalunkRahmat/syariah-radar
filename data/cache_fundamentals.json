@@ -686,5 +686,68 @@
       "Profitabilitas Sangat Kuat (ROE 133.37% > 15%)",
       "Kesehatan Utang Prima (DER 18.1%: Sangat Aman Syariah)"
     ]
+  },
+  "AMRT": {
+    "pe": 12.16,
+    "pbv": 2.41,
+    "roe": 20.03,
+    "der": 14.11,
+    "market_cap": 42940965584896,
+    "market_cap_str": "Rp 42.9 T",
+    "div_yield": 569.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 20.03% > 15%)",
+      "Kesehatan Utang Prima (DER 14.11%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 2.41x)"
+    ]
+  },
+  "BRIS": {
+    "pe": 6.1,
+    "pbv": 0.95,
+    "roe": 16.15,
+    "der": null,
+    "market_cap": 48666366705664,
+    "market_cap_str": "Rp 48.7 T",
+    "div_yield": 322.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 16.15% > 15%)",
+      "Valuasi Murah di Bawah Nilai Buku (PBV 0.95x)"
+    ]
+  },
+  "JPFA": {
+    "pe": 3.83,
+    "pbv": 1.02,
+    "roe": 29.18,
+    "der": 76.24,
+    "market_cap": 20132378181632,
+    "market_cap_str": "Rp 20.1 T",
+    "div_yield": 851.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 85,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 29.18% > 15%)",
+      "Rasio Utang Terkendali (DER 76.24%)",
+      "Valuasi Wajar (PBV 1.02x)"
+    ]
+  },
+  "MIKA": {
+    "pe": 12.63,
+    "pbv": 2.43,
+    "roe": 18.96,
+    "der": 0.11,
+    "market_cap": 17800512929792,
+    "market_cap_str": "Rp 17.8 T",
+    "div_yield": 313.0,
+    "cap_category": "Big Cap (>Rp 10T)",
+    "score": 95,
+    "reasons": [
+      "Profitabilitas Sangat Kuat (ROE 18.96% > 15%)",
+      "Kesehatan Utang Prima (DER 0.11%: Sangat Aman Syariah)",
+      "Valuasi Wajar (PBV 2.43x)"
+    ]
   }
 }

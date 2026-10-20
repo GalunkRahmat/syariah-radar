@@ -12,6 +12,7 @@ import pandas as pd
 from screener.data_fetcher import load_sharia_stocks
 from screener.bandarmologi import analyze_bandarmologi
 from screener.fundamentals import load_fundamentals_cache, fetch_ticker_fundamentals
+from screener.broker_summary import calculate_broker_summary
 
 
 def evaluate_ticker(code: str, meta: dict, df: pd.DataFrame, fundamentals_cache: dict) -> dict | None:
@@ -216,6 +217,23 @@ def evaluate_ticker(code: str, meta: dict, df: pd.DataFrame, fundamentals_cache:
 
     trend_label = "STAGE 2 UPTREND" if is_ma_aligned else ("ABOVE MA200" if is_above_ma200 else "REBOUND")
 
+    # -------------------------------------------------------------
+    # BROKER SUMMARY & FOREIGN FLOW (7D SWING HORIZON)
+    # -------------------------------------------------------------
+    broksum_7d = calculate_broker_summary(df, code, period="7D")
+    buyers_7d = broksum_7d.get("buyers", [])
+    b1 = buyers_7d[0] if len(buyers_7d) >= 1 else None
+    b2 = buyers_7d[1] if len(buyers_7d) >= 2 else None
+    b1_is_foreign = (b1.get("category") == "ASING") if b1 else False
+    b2_is_foreign = (b2.get("category") == "ASING") if b2 else False
+    is_foreign_accum = (b1_is_foreign or b2_is_foreign)
+    is_pure_foreign = (b1_is_foreign and b2_is_foreign)
+    top_foreign_brokers = [b["broker_code"] for b in buyers_7d if b.get("category") == "ASING"]
+    foreign_brokers_str = ", ".join(top_foreign_brokers[:2]) if top_foreign_brokers else ""
+
+    if is_foreign_accum and foreign_brokers_str:
+        safety_confirmations.append(f"Foreign Flow: Akumulasi dominan broker Asing ({foreign_brokers_str}) dalam 7 hari")
+
     return {
         "code": code,
         "name": meta.get("name", code),
@@ -252,6 +270,18 @@ def evaluate_ticker(code: str, meta: dict, df: pd.DataFrame, fundamentals_cache:
         "vol_ratio": round(vol_ratio, 2),
         "reasons": reasons,
         "safety_confirmations": safety_confirmations,
+        "foreign_flow": {
+            "is_accum": bool(is_foreign_accum),
+            "is_pure_foreign": bool(is_pure_foreign),
+            "top_foreign_brokers": top_foreign_brokers,
+            "foreign_brokers_str": foreign_brokers_str,
+            "top1_broker": b1.get("broker_code", "-") if b1 else "-",
+            "top1_category": b1.get("category", "-") if b1 else "-",
+            "top2_broker": b2.get("broker_code", "-") if b2 else "-",
+            "top2_category": b2.get("category", "-") if b2 else "-",
+            "net_val_diff": broksum_7d.get("net_val_diff", 0),
+            "net_val_str": broksum_7d.get("net_val_diff_str", "Rp 0")
+        },
         "bandarmologi": {
             "status": bandar.get("status", "NEUTRAL"),
             "label": bandar.get("label", "Netral"),

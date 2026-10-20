@@ -1052,6 +1052,10 @@ async function fetchResults(forceRefresh = false) {
     const accumCount = currentCandidates.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION')).length;
     document.getElementById('statAccumulation').innerText = accumCount;
 
+    const foreignCount = currentCandidates.filter(c => c.foreign_flow && c.foreign_flow.is_accum).length;
+    const foreignEl = document.getElementById('foreignFlowCount');
+    if (foreignEl) foreignEl.innerText = foreignCount;
+
     updateWatchlistCounter();
     updateJournalBadges();
     populateCalculatorDropdown();
@@ -1137,6 +1141,8 @@ function renderCandidates() {
     list = list.filter(c => watchlist.includes(c.code));
   } else if (currentFilter === 'LOW_RISK') {
     list = list.filter(c => c.risk_level === 'LOW_RISK');
+  } else if (currentFilter === 'FOREIGN_FLOW') {
+    list = list.filter(c => c.foreign_flow && c.foreign_flow.is_accum);
   } else if (currentFilter === 'BIG_ACCUMULATION') {
     list = list.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION'));
   } else if (currentFilter === 'JII') {
@@ -1332,6 +1338,14 @@ function renderCandidates() {
       bandarChip = '<span class="px-2 py-0.5 rounded-md bg-blue-950/70 text-blue-400 border border-blue-700/60 text-[11px] md:text-xs font-semibold">🕵️ Akumulasi</span>';
     }
 
+    // Foreign Flow Badge
+    const ff = c.foreign_flow || {};
+    let foreignChip = '';
+    if (ff.is_accum) {
+      const brokerText = ff.foreign_brokers_str ? ` (${ff.foreign_brokers_str})` : '';
+      foreignChip = `<span class="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[11px] md:text-xs font-semibold flex items-center gap-1 shrink-0" title="Top Net Buyer didominasi broker Asing (7 Hari)"><i class="fa-solid fa-landmark text-rose-400"></i><span>Asing${brokerText}</span></span>`;
+    }
+
     // Fundamental Highlights
     const fund = c.fundamental || {};
     let fundText = '';
@@ -1364,6 +1378,7 @@ function renderCandidates() {
               ${riskBadge}
               ${setupBadge}
               ${bandarChip}
+              ${foreignChip}
               ${maBadge}
             </div>
             <p class="text-xs md:text-sm text-gray-300 font-medium truncate">${c.name} <span class="text-gray-500">• ${c.sector}</span></p>

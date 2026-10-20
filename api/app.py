@@ -355,7 +355,9 @@ def get_screening_results(
 
     filtered = [c for c in all_candidates if c['score'] >= min_score]
 
-    if setup and setup != "ALL":
+    if setup == "FOREIGN_FLOW":
+        filtered = [c for c in filtered if c.get("foreign_flow", {}).get("is_accum")]
+    elif setup and setup != "ALL":
         filtered = [c for c in filtered if c['setup_type'] == setup]
 
     if risk_level and risk_level != "ALL":
@@ -364,6 +366,7 @@ def get_screening_results(
     summary = {
         "total_scanned": len(market_data),
         "total_candidates": len(filtered),
+        "foreign_accumulation": len([c for c in all_candidates if c.get("foreign_flow", {}).get("is_accum")]),
         "strategy_counts": {
             "STAGE2_BREAKOUT": len([c for c in all_candidates if c['setup_type'] == "STAGE2_BREAKOUT"]),
             "UPTREND_PULLBACK": len([c for c in all_candidates if c['setup_type'] == "UPTREND_PULLBACK"]),
