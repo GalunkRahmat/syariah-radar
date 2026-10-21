@@ -2850,6 +2850,222 @@ function setJournalFilter(filter) {
   renderJournalView();
 }
 
+// =============================================================
+// SMART TRAILING STOP ASSISTANT (IDX TICK & PROTECTION ENGINE)
+// =============================================================
+let currentTSModalTrade = null;
+
+function roundToIDXTick(price) {
+  const p = Math.round(Number(price) || 0);
+  if (p <= 0) return 0;
+  let tick = 1;
+  if (p < 200) tick = 1;
+  else if (p < 500) tick = 2;
+  else if (p < 2000) tick = 5;
+  else if (p < 5000) tick = 10;
+  else tick = 25;
+
+  return Math.round(p / tick) * tick;
+}
+
+function calculateSmartTrailingStop(trade, currentPrice) {
+  if (!trade || trade.status !== 'OPEN') return null;
+  const entry = Number(trade.entryPrice) || 0;
+  const curr = Number(currentPrice) || 0;
+  if (entry <= 0 || curr <= 0) return null;
+
+  const floatingPct = ((curr - entry) / entry) * 100;
+  const bepPrice = roundToIDXTick(entry * 1.008); // 0.8% covers typical buy + sell broker fee
+  const halfProfitPrice = roundToIDXTick(entry + (curr - entry) * 0.5);
+
+  let suggestedPrice = bepPrice;
+  let badgeText = "🛡️ Amankan Modal (BEP)";
+  let statusType = "EARLY_PROFIT";
+
+  // Check if reached or near TP1 (within 98% of TP1)
+  if (trade.tp1 && curr >= trade.tp1 * 0.98) {
+    if (curr >= trade.tp1) {
+      suggestedPrice = Math.max(roundToIDXTick(trade.tp1), roundToIDXTick(entry + (curr - entry) * 0.7));
+      badgeText = "🎯 Kunci Profit TP1 / 70%";
+    } else {
+      suggestedPrice = roundToIDXTick(trade.tp1 * 0.98);
+      badgeText = "🎯 Mendekati TP1";
+    }
+    statusType = "TP1_REACHED";
+  } else if (floatingPct >= 5.0) {
+    suggestedPrice = halfProfitPrice;
+    badgeText = "🔒 Kunci 50% Floating Profit";
+    statusType = "HEALTHY_PROFIT";
+  } else if (floatingPct >= 2.0 && curr > bepPrice) {
+    suggestedPrice = bepPrice;
+    badgeText = "🛡️ Amankan Modal (BEP)";
+    statusType = "EARLY_PROFIT";
+  } else {
+    // If floating profit is too small, only show if SL is already above entry
+    if (!(trade.stopLoss && trade.stopLoss > entry)) {
+      return null;
+    }
+    suggestedPrice = bepPrice;
+    badgeText = "🔒 Pengaman Aktif";
+    statusType = "CUSTOM";
+  }
+
+  const suggestedPct = entry > 0 ? ((suggestedPrice - entry) / entry) * 100 : 0;
+  const shares = (trade.lots || 1) * 100;
+  const suggestedProfit = (suggestedPrice - entry) * shares;
+
+  return {
+    tradeId: trade.id,
+    code: trade.code,
+    entryPrice: entry,
+    currentPrice: curr,
+    currentSL: Number(trade.stopLoss) || 0,
+    gainPct: floatingPct,
+    bepPrice: bepPrice,
+    halfPrice: halfProfitPrice,
+    suggestedPrice: suggestedPrice,
+    suggestedPct: suggestedPct,
+    suggestedProfit: suggestedProfit,
+    badgeText: badgeText,
+    statusType: statusType,
+    isTrailingActive: (Number(trade.stopLoss) || 0) > entry
+  };
+}
+
+function applyTrailingStop(tradeId, targetPrice) {
+  const price = roundToIDXTick(Number(targetPrice) || 0);
+  if (!price || price <= 0) {
+    showToast("Harga Trailing Stop tidak valid.");
+    return;
+  }
+
+  const trades = getJournalTrades();
+  const trade = trades.find(item => item.id === tradeId);
+  if (!trade) {
+    showToast("Data transaksi tidak ditemukan.");
+    return;
+  }
+
+  trade.stopLoss = price;
+  saveJournalTrades(trades, true);
+  renderJournalView();
+
+  const shares = (trade.lots || 1) * 100;
+  const lockedProfit = (price - trade.entryPrice) * shares;
+  const lockedPct = ((price - trade.entryPrice) / trade.entryPrice) * 100;
+
+  if (price > trade.entryPrice) {
+    showToast(`🔒 Trailing Stop ${trade.code} diaktifkan di Rp ${formatIDR(price)}! Profit minimal terkunci +${formatIDR(lockedProfit)} (+${lockedPct.toFixed(1)}%).`);
+  } else if (price === trade.entryPrice) {
+    showToast(`🛡️ Stop Loss ${trade.code} digeser ke harga modal (BEP Rp ${formatIDR(price)}). Bebas risiko rugi!`);
+  } else {
+    showToast(`Batas Stop Loss ${trade.code} disesuaikan ke Rp ${formatIDR(price)}.`);
+  }
+}
+
+function openCustomTSModal(tradeId) {
+  const trades = getJournalTrades();
+  const trade = trades.find(item => item.id === tradeId);
+  if (!trade) return;
+
+  currentTSModalTrade = trade;
+  const modal = document.getElementById('trailingStopModal');
+  if (!modal) return;
+
+  const latestPrice = findStockLatestPrice(trade.code) || trade.entryPrice;
+  const currentPrice = (trade.status === 'OPEN') ? latestPrice : (trade.exitPrice || trade.entryPrice);
+  const ts = calculateSmartTrailingStop(trade, currentPrice);
+
+  document.getElementById('customTSTradeId').value = trade.id;
+  document.getElementById('tsModalTicker').innerText = trade.code;
+  document.getElementById('tsModalEntryPrice').innerText = 'Rp ' + formatIDR(trade.entryPrice);
+  document.getElementById('tsModalCurrentPrice').innerText = 'Rp ' + formatIDR(currentPrice);
+  document.getElementById('tsModalCurrentSL').innerText = trade.stopLoss ? ('Rp ' + formatIDR(trade.stopLoss)) : '-';
+
+  const bep = ts ? ts.bepPrice : roundToIDXTick(trade.entryPrice * 1.008);
+  const half = ts ? ts.halfPrice : roundToIDXTick(trade.entryPrice + (currentPrice - trade.entryPrice) * 0.5);
+  const suggested = ts ? ts.suggestedPrice : half;
+
+  document.getElementById('tsPresetBEPPrice').innerText = 'Rp ' + formatIDR(bep);
+  document.getElementById('tsPresetHalfPrice').innerText = 'Rp ' + formatIDR(half);
+  document.getElementById('tsPresetSuggestedPrice').innerText = 'Rp ' + formatIDR(suggested);
+
+  const defaultVal = suggested > 0 ? suggested : (trade.stopLoss || bep);
+  const inputEl = document.getElementById('customTSInput');
+  inputEl.value = defaultVal;
+
+  calcCustomTSPreview();
+  modal.classList.remove('hidden');
+}
+
+function closeCustomTSModal() {
+  const modal = document.getElementById('trailingStopModal');
+  if (modal) modal.classList.add('hidden');
+  currentTSModalTrade = null;
+}
+
+function selectTSPreset(type) {
+  if (!currentTSModalTrade) return;
+  const trade = currentTSModalTrade;
+  const latestPrice = findStockLatestPrice(trade.code) || trade.entryPrice;
+  const currentPrice = (trade.status === 'OPEN') ? latestPrice : (trade.exitPrice || trade.entryPrice);
+  const ts = calculateSmartTrailingStop(trade, currentPrice);
+
+  let targetPrice = 0;
+  if (type === 'bep') {
+    targetPrice = ts ? ts.bepPrice : roundToIDXTick(trade.entryPrice * 1.008);
+  } else if (type === 'half') {
+    targetPrice = ts ? ts.halfPrice : roundToIDXTick(trade.entryPrice + (currentPrice - trade.entryPrice) * 0.5);
+  } else if (type === 'suggested') {
+    targetPrice = ts ? ts.suggestedPrice : roundToIDXTick(trade.entryPrice + (currentPrice - trade.entryPrice) * 0.5);
+  }
+
+  if (targetPrice > 0) {
+    document.getElementById('customTSInput').value = targetPrice;
+    calcCustomTSPreview();
+  }
+}
+
+function calcCustomTSPreview() {
+  if (!currentTSModalTrade) return;
+  const trade = currentTSModalTrade;
+  const inputVal = Number(document.getElementById('customTSInput').value) || 0;
+  const previewText = document.getElementById('customTSPreviewText');
+  if (!previewText) return;
+
+  const rounded = roundToIDXTick(inputVal);
+  const shares = (trade.lots || 1) * 100;
+  const diff = rounded - trade.entryPrice;
+  const diffPct = trade.entryPrice > 0 ? (diff / trade.entryPrice) * 100 : 0;
+  const diffMoney = diff * shares;
+
+  if (diff > 0) {
+    previewText.className = 'text-xs font-bold font-mono text-emerald-400 block';
+    previewText.innerText = `🔒 Terkunci Profit Minimum: +${formatIDR(diffMoney)} (+${diffPct.toFixed(1)}%)`;
+  } else if (diff === 0) {
+    previewText.className = 'text-xs font-bold font-mono text-blue-400 block';
+    previewText.innerText = `🛡️ Break-Even Point (Balik Modal)`;
+  } else {
+    previewText.className = 'text-xs font-bold font-mono text-red-400 block';
+    previewText.innerText = `⚠️ Di Bawah Modal (Risiko: ${formatIDR(diffMoney)} / ${diffPct.toFixed(1)}%)`;
+  }
+}
+
+function handleCustomTSSubmit(event) {
+  event.preventDefault();
+  const tradeId = document.getElementById('customTSTradeId').value;
+  const inputVal = Number(document.getElementById('customTSInput').value) || 0;
+  const validPrice = roundToIDXTick(inputVal);
+
+  if (!validPrice || validPrice <= 0) {
+    showToast("Masukkan harga Trailing Stop yang valid.");
+    return;
+  }
+
+  applyTrailingStop(tradeId, validPrice);
+  closeCustomTSModal();
+}
+
 function renderJournalView() {
   const container = document.getElementById('journalTradesList');
   if (!container) return;
@@ -3001,6 +3217,8 @@ function renderJournalView() {
     let pnlAmount = 0;
     let pnlPct = 0;
     let statusBadge = '';
+    const ts = (!isClosed) ? calculateSmartTrailingStop(t, currentPrice) : null;
+    const isTrailingActive = !isClosed && (t.stopLoss && t.stopLoss > t.entryPrice);
 
     if (!isClosed) {
       pnlAmount = (currentPrice - t.entryPrice) * shares;
@@ -3019,6 +3237,10 @@ function renderJournalView() {
         statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1"><i class="fa-solid fa-arrow-trend-down text-red-400"></i> Floating Loss</span>';
       } else {
         statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-300 border border-gray-700 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px] text-blue-400"></i> Posisi Aktif (Hold)</span>';
+      }
+
+      if (isTrailingActive) {
+        statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-lock text-emerald-400"></i> Terkunci Cuan</span>`;
       }
     } else {
       pnlAmount = Number(t.realizedPnl || 0);
@@ -3084,8 +3306,13 @@ function renderJournalView() {
         <!-- TARGET TRADING PLAN STRIP -->
         <div class="flex items-center justify-between text-[10px] md:text-[11px] px-2 py-1.5 rounded-lg bg-gray-900/60 border border-gray-800 text-gray-400 flex-wrap gap-1">
           <span class="flex items-center gap-1">
-            <span class="text-red-400 font-semibold">Stop Loss:</span>
-            <span class="text-white font-mono">${t.stopLoss ? formatIDR(t.stopLoss) : '-'}</span>
+            ${isTrailingActive ? `
+              <span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-lock text-[9px]"></i> Trailing Stop:</span>
+              <span class="text-emerald-300 font-mono font-bold">${formatIDR(t.stopLoss)} (+${(((t.stopLoss - t.entryPrice) / t.entryPrice) * 100).toFixed(1)}%)</span>
+            ` : `
+              <span class="text-red-400 font-semibold">Stop Loss:</span>
+              <span class="text-white font-mono">${t.stopLoss ? formatIDR(t.stopLoss) : '-'}</span>
+            `}
           </span>
           <span class="flex items-center gap-1">
             <span class="text-emerald-400 font-semibold">Target TP1:</span>
@@ -3096,6 +3323,56 @@ function renderJournalView() {
             <span class="text-white font-mono">${t.tp2 ? formatIDR(t.tp2) : '-'}</span>
           </span>
         </div>
+
+        <!-- SMART TRAILING STOP ASSISTANT CARD -->
+        ${ts ? `
+          <div class="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-emerald-950/30 via-[#111c1d] to-[#0e1626] border border-emerald-500/30 space-y-2">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs shrink-0">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </span>
+                <div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-white">Smart Trailing Stop</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">${ts.badgeText}</span>
+                  </div>
+                  <p class="text-[10px] text-gray-400 leading-tight">
+                    ${isTrailingActive 
+                      ? `Pengaman cuan aktif di <span class="text-emerald-400 font-mono font-bold">Rp ${formatIDR(t.stopLoss)}</span> (Minimal aman +${formatIDR((t.stopLoss - t.entryPrice) * shares)}).`
+                      : `Saham cuan <span class="text-emerald-400 font-mono font-bold">+${ts.gainPct.toFixed(1)}%</span>. Kunci cuan agar tidak berubah minus.`
+                    }
+                  </p>
+                </div>
+              </div>
+              <button onclick="openCustomTSModal('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white text-[10px] font-medium border border-gray-700 transition flex items-center gap-1">
+                <i class="fa-solid fa-sliders text-emerald-400 text-[10px]"></i>
+                <span>Sesuaikan</span>
+              </button>
+            </div>
+
+            <!-- ONE-CLICK BUTTONS -->
+            <div class="flex items-center gap-1.5 flex-wrap text-xs pt-0.5">
+              ${ts.suggestedPrice > (t.stopLoss || 0) ? `
+                <button onclick="applyTrailingStop('${t.id}', ${ts.suggestedPrice})" class="flex-1 min-w-[150px] py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition flex items-center justify-center gap-1.5 shadow">
+                  <i class="fa-solid fa-lock text-[10px]"></i>
+                  <span>Kunci di Rp ${formatIDR(ts.suggestedPrice)} (+${ts.suggestedPct.toFixed(1)}%)</span>
+                </button>
+              ` : `
+                <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1 px-1">
+                  <i class="fa-solid fa-check"></i> Trailing Stop Terkunci Optimal di Rp ${formatIDR(t.stopLoss)}
+                </span>
+              `}
+
+              ${ts.bepPrice > (t.stopLoss || 0) && ts.bepPrice !== ts.suggestedPrice ? `
+                <button onclick="applyTrailingStop('${t.id}', ${ts.bepPrice})" class="py-1.5 px-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 font-medium text-[11px] transition flex items-center justify-center gap-1">
+                  <i class="fa-solid fa-shield text-gray-400 text-[10px]"></i>
+                  <span>BEP Rp ${formatIDR(ts.bepPrice)}</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
 
         <!-- NOTES ROW -->
         ${t.notes ? `
