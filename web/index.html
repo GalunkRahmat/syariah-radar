@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.0.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.0.1">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v2.0.0') {
+          if (key !== 'syariah-radar-v2.0.1') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -1002,10 +1002,17 @@
             <span>+ Catat ke Jurnal Trading (Simulasi Beli)</span>
           </button>
 
-          <button onclick="copyCurrentModalPlan()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-semibold text-xs border border-gray-700 transition flex items-center justify-center gap-2 shadow-sm">
-            <i class="fa-solid fa-copy text-emerald-400"></i>
-            <span>Salin Trading Plan Lengkap (Siap Share ke WA / Catatan)</span>
-          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+            <button onclick="shareCurrentModalToWhatsApp()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-2 shadow-md">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+              <span>Share ke WhatsApp</span>
+            </button>
+
+            <button onclick="copyCurrentModalPlan()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-semibold text-xs border border-gray-700 transition flex items-center justify-center gap-2 shadow-sm">
+              <i class="fa-solid fa-copy text-emerald-400"></i>
+              <span>Salin Teks Sinyal Lengkap</span>
+            </button>
+          </div>
         </div>
 
         <!-- BANDARMOLOGI & FLOW SECTION -->
@@ -2178,6 +2185,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.0.0"></script>
+  <script src="/static/app.js?v=2.0.1"></script>
 </body>
 </html>

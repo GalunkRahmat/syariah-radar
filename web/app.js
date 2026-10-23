@@ -607,35 +607,113 @@ function fallbackCopy(text, successMsg) {
   document.body.removeChild(textArea);
 }
 
+function generateStockSignalText(stock) {
+  if (!stock) return '';
+  const s = stock;
+  const plan = s.trading_plan || {
+    entry: s.price,
+    stop_loss: roundToIDXTick(s.price * 0.95),
+    tp1: roundToIDXTick(s.price * 1.06),
+    tp2: roundToIDXTick(s.price * 1.12),
+    risk_pct: 5.0,
+    tp1_pct: 6.0,
+    tp2_pct: 12.0
+  };
+
+  let setupName = 'Swing Trend Following';
+  if (s.setup_type === 'STAGE2_BREAKOUT') {
+    setupName = '🚀 Breakout Retest (Stage 2 Uptrend)';
+  } else if (s.setup_type === 'UPTREND_PULLBACK') {
+    setupName = '📈 Pullback Support MA20/MA50';
+  } else if (s.setup_type === 'RS_LEADER') {
+    setupName = '👑 Leader Kuat di Atas MA200';
+  } else if (s.setup_type === 'OVERSOLD_REVERSAL') {
+    setupName = '⚡ Reversal Pantulan Oversold';
+  }
+
+  let riskLabel = '🛡️ Grade A+ (Paling Aman)';
+  if (s.risk_level === 'MEDIUM_RISK') riskLabel = '⚖️ Grade B (Moderat)';
+  else if (s.risk_level === 'HIGH_RISK') riskLabel = '⚠️ Spekulatif';
+
+  const bandar = s.bandarmologi || {};
+  const bandarLabel = bandar.label || (s.bandar_score >= 80 ? 'Akumulasi Jumbo' : (s.bandar_score >= 65 ? 'Akumulasi Sedang' : 'Netral'));
+
+  const ff = s.foreign_flow || {};
+  let brokerFlowText = 'Smart Money Terdeteksi';
+  if (ff.top1_broker && ff.top1_broker !== '-') {
+    brokerFlowText = `Top 1: ${ff.top1_broker} (${ff.top1_category}) | Top 2: ${ff.top2_broker} (${ff.top2_category})`;
+  }
+
+  let foreignText = 'Netral / Domestik Driven';
+  if (ff.is_accum) {
+    foreignText = `Akumulasi Asing Net: ${ff.net_val_str || 'Positif'}${ff.foreign_brokers_str ? ' via ' + ff.foreign_brokers_str : ''}`;
+  }
+
+  const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  return `🚀 SINYAL SWING RADAR SYARIAH
+📅 Tanggal: ${dateStr}
+━━━━━━━━━━━━━━━━━━━━━━
+📌 Emiten : ${s.code} - ${s.name || ''}
+🏛️ Sektor : ${s.sector || 'BEI Syariah'} (ISSI)
+🎯 Setup  : ${setupName}
+⭐ Skor   : ${s.score || 80}/100 (${riskLabel})
+━━━━━━━━━━━━━━━━━━━━━━
+📍 Area Beli (Entry)  : Rp ${formatIDR(plan.entry)}
+⛔ Stop Loss (Proteksi): Rp ${formatIDR(plan.stop_loss)} (-${plan.risk_pct}%)
+🎯 Target Profit 1    : Rp ${formatIDR(plan.tp1)} (+${plan.tp1_pct}%)
+🚀 Target Profit 2    : Rp ${formatIDR(plan.tp2)} (+${plan.tp2_pct}%)
+⚖️ Risk / Reward      : 1 : 2.5
+━━━━━━━━━━━━━━━━━━━━━━
+🕵️‍♂️ BANDARMOLOGI & FLOW:
+• Status Akumulasi : ${bandarLabel} (Skor: ${s.bandar_score || bandar.score || 80}/100)
+• Broker Penggerak : ${brokerFlowText}
+• Aliran Asing     : ${foreignText}
+━━━━━━━━━━━━━━━━━━━━━━
+📱 Analisa otomatis via Syariah Swing Radar Pro
+🔗 https://syariah-radar.vercel.app/
+⚠️ Disclaimer On: Riset mandiri & selalu disiplin Stop Loss.`;
+}
+
+function shareStockSignal(code) {
+  const stock = currentCandidates.find(c => c.code === code) || allTrackedStocks.find(s => s.code === code);
+  if (!stock) return;
+
+  const text = generateStockSignalText(stock);
+  copyToClipboard(text, `📲 Sinyal ${stock.code} Berhasil Disalin! Membuka WhatsApp...`);
+
+  const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+  window.open(waUrl, '_blank');
+}
+
+function shareCurrentModalToWhatsApp() {
+  if (!currentOpenStock) return;
+  shareStockSignal(currentOpenStock.code);
+}
+
 function copyCurrentModalPlan() {
   if (!currentOpenStock) return;
   const s = currentOpenStock;
-  const plan = s.trading_plan || {};
-  const lots = document.getElementById('calcLots').innerText;
-  const shares = document.getElementById('calcShares').innerText;
-  const allocated = document.getElementById('calcAllocated').innerText;
-  const allocPct = document.getElementById('calcAllocPct').innerText;
-  const maxRisk = document.getElementById('calcMaxRisk').innerText;
-  const riskPct = document.getElementById('calcRiskPct').value || 2;
+  const baseText = generateStockSignalText(s);
 
-  const text = `📌 SWING PLAN: ${s.code} - ${s.name}
-🏛️ Sektor: ${s.sector} | Indeks: ${(s.indices || ['ISSI']).join(', ')}
-🛡️ Status: ${s.passed_screener !== false ? `Sinyal Lolos (${s.risk_label || 'Paling Aman'}) • Skor ${s.score}/100` : 'Saham Pantauan Radar'}
-────────────────────────────
-📍 Area Beli (Entry)  : ${formatIDR(plan.entry)}
-⛔ Stop Loss (Proteksi): ${formatIDR(plan.stop_loss)} (-${plan.risk_pct}%)
-🎯 Target Profit 1    : ${formatIDR(plan.tp1)} (+${plan.tp1_pct}%)
-🚀 Target Profit 2    : ${formatIDR(plan.tp2)} (+${plan.tp2_pct}%)
-⚖️ Risk / Reward      : 1 : 2.5
-────────────────────────────
-💰 Money Management (${riskPct}% Risiko Portofolio):
-- Ukuran Posisi : ${lots} ${shares}
-- Modal Alokasi : ${allocated} ${allocPct}
-- Risiko Terkunci: ${maxRisk}
-────────────────────────────
-💡 Sumber: Syariah Swing Radar Pro`;
+  const lots = document.getElementById('calcLots')?.innerText;
+  const shares = document.getElementById('calcShares')?.innerText;
+  const allocated = document.getElementById('calcAllocated')?.innerText;
+  const allocPct = document.getElementById('calcAllocPct')?.innerText;
+  const maxRisk = document.getElementById('calcMaxRisk')?.innerText;
+  const riskPct = document.getElementById('calcRiskPct')?.value || 2;
 
-  copyToClipboard(text, `✅ Trading Plan ${s.code} Berhasil Disalin!`);
+  let fullText = baseText;
+  if (lots && lots !== '0 Lot' && lots !== '0 Lot') {
+    const mmBlock = `━━━━━━━━━━━━━━━━━━━━━━
+💰 MONEY MANAGEMENT (${riskPct}% Risiko Portofolio):
+• Ukuran Posisi : ${lots} ${shares}
+• Modal Alokasi : ${allocated} ${allocPct}
+• Risiko Maksimal: ${maxRisk} jika kena SL`;
+    fullText = fullText.replace('━━━━━━━━━━━━━━━━━━━━━━\n📱 Analisa otomatis', `${mmBlock}\n━━━━━━━━━━━━━━━━━━━━━━\n📱 Analisa otomatis`);
+  }
+
+  copyToClipboard(fullText, `✅ Sinyal & Trading Plan ${s.code} Lengkap Berhasil Disalin!`);
 }
 
 function copyStandalonePlan() {
@@ -1384,7 +1462,10 @@ function renderCandidates() {
             <p class="text-xs md:text-sm text-gray-300 font-medium truncate">${c.name} <span class="text-gray-500">• ${c.sector}</span></p>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="event.stopPropagation(); shareStockSignal('${c.code}')" class="w-9 h-9 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 flex items-center justify-center transition border border-emerald-500/30 shadow-sm" title="Share Sinyal ke WhatsApp">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+            </button>
             <button onclick="event.stopPropagation(); quickAddStockToJournal('${c.code}')" class="w-9 h-9 rounded-xl bg-gray-800/80 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 flex items-center justify-center transition border border-gray-700/60 shadow-sm" title="Catat ke Jurnal Trading (Simulasi Beli)">
               <i class="fa-solid fa-book-bookmark text-xs"></i>
             </button>
