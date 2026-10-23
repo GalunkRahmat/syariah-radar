@@ -1458,8 +1458,12 @@ function renderCandidates() {
 // STANDALONE LOT SIZING CALCULATOR
 // -------------------------------------------------------------
 function populateCalculatorDropdown() {
-  const select = document.getElementById('calcStockSelector');
-  if (!select) return;
+  const selects = [
+    document.getElementById('calcStockSelector'),
+    document.getElementById('pyramidStockSelector')
+  ].filter(Boolean);
+
+  if (selects.length === 0) return;
 
   let options = '<option value="">-- Pilih Saham atau Ketik Manual di Bawah --</option>';
   if (currentCandidates.length > 0) {
@@ -1477,11 +1481,17 @@ function populateCalculatorDropdown() {
     });
     options += '</optgroup>';
   }
-  select.innerHTML = options;
+
+  selects.forEach(sel => {
+    const prevVal = sel.value;
+    sel.innerHTML = options;
+    if (prevVal) sel.value = prevVal;
+  });
 }
 
 function openStandaloneCalcModal(preselectedCode = null) {
   const modal = document.getElementById('standaloneCalcModal');
+  if (!modal) return;
   modal.classList.remove('hidden');
 
   // Load capital setting from localStorage
@@ -1490,21 +1500,67 @@ function openStandaloneCalcModal(preselectedCode = null) {
     document.getElementById('scCapital').value = savedCap;
   }
 
+  populateCalculatorDropdown();
+
   if (preselectedCode) {
     document.getElementById('calcStockSelector').value = preselectedCode;
     handleStockSelection(preselectedCode);
+    const pyrSel = document.getElementById('pyramidStockSelector');
+    if (pyrSel) {
+      pyrSel.value = preselectedCode;
+      handlePyramidStockSelection(preselectedCode);
+    }
   } else if (!document.getElementById('scEntry').value && currentCandidates.length > 0) {
     // Default to first candidate if empty
     const first = currentCandidates[0];
     document.getElementById('calcStockSelector').value = first.code;
     handleStockSelection(first.code);
+    const pyrSel = document.getElementById('pyramidStockSelector');
+    if (pyrSel) {
+      pyrSel.value = first.code;
+      handlePyramidStockSelection(first.code);
+    }
   } else {
     runStandaloneCalc();
+    runPyramidCalc();
   }
 }
 
 function closeStandaloneCalcModal() {
-  document.getElementById('standaloneCalcModal').classList.add('hidden');
+  const modal = document.getElementById('standaloneCalcModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function switchCalcTab(mode) {
+  const singleBtn = document.getElementById('tabCalcSingleBtn');
+  const pyramidBtn = document.getElementById('tabCalcPyramidBtn');
+  const singleContainer = document.getElementById('calcSingleContainer');
+  const pyramidContainer = document.getElementById('calcPyramidContainer');
+
+  if (!singleBtn || !pyramidBtn || !singleContainer || !pyramidContainer) return;
+
+  if (mode === 'pyramid') {
+    singleBtn.className = 'py-2.5 px-3 font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-1.5 transition';
+    pyramidBtn.className = 'py-2.5 px-3 font-bold border-b-2 border-blue-500 text-blue-400 flex items-center gap-1.5 transition';
+    singleContainer.classList.add('hidden');
+    pyramidContainer.classList.remove('hidden');
+
+    populateCalculatorDropdown();
+    const currCode = document.getElementById('calcStockSelector').value;
+    const pyrSel = document.getElementById('pyramidStockSelector');
+    if (currCode && pyrSel && !pyrSel.value) {
+      pyrSel.value = currCode;
+      handlePyramidStockSelection(currCode);
+    } else {
+      runPyramidCalc();
+    }
+  } else {
+    singleBtn.className = 'py-2.5 px-3 font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-1.5 transition';
+    pyramidBtn.className = 'py-2.5 px-3 font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-1.5 transition';
+    pyramidContainer.classList.add('hidden');
+    singleContainer.classList.remove('hidden');
+    runStandaloneCalc();
+  }
 }
 
 function handleStockSelection(code) {
@@ -1514,12 +1570,20 @@ function handleStockSelection(code) {
 
   const plan = stock.trading_plan || {
     entry: stock.price,
-    stop_loss: Math.round(stock.price * 0.95)
+    stop_loss: roundToIDXTick(stock.price * 0.95),
+    tp1: roundToIDXTick(stock.price * 1.06)
   };
 
   document.getElementById('scEntry').value = plan.entry;
   document.getElementById('scStopLoss').value = plan.stop_loss;
   runStandaloneCalc();
+
+  // Also sync to pyramid tab if not set
+  const pyrSel = document.getElementById('pyramidStockSelector');
+  if (pyrSel && !pyrSel.value) {
+    pyrSel.value = code;
+    handlePyramidStockSelection(code);
+  }
 }
 
 function setStandaloneRisk(pct) {
@@ -1552,12 +1616,12 @@ function runStandaloneCalc() {
     document.getElementById('scResultMaxRisk').innerText = 'Rp 0';
     document.getElementById('scResultProfitTP1').innerText = '+Rp 0';
     document.getElementById('scResultProfitTP2').innerText = '+Rp 0';
-    adviceEl.innerText = 'Silakan masukkan harga Entry dan Stop Loss.';
+    if (adviceEl) adviceEl.innerText = 'Silakan masukkan harga Entry dan Stop Loss.';
     return;
   }
 
   if (entry <= stopLoss) {
-    adviceEl.innerText = '⚠️ Peringatan: Harga Stop Loss harus lebih rendah dari harga Entry!';
+    if (adviceEl) adviceEl.innerText = '⚠️ Peringatan: Harga Stop Loss harus lebih rendah dari harga Entry!';
     return;
   }
 
@@ -1591,7 +1655,276 @@ function runStandaloneCalc() {
   document.getElementById('scResultProfitTP1').innerText = `+${formatIDR(profitTP1)} (+${((targetTP1-entry)/entry*100).toFixed(1)}%)`;
   document.getElementById('scResultProfitTP2').innerText = `+${formatIDR(profitTP2)} (+${((targetTP2-entry)/entry*100).toFixed(1)}%)`;
 
-  adviceEl.innerText = `✅ Aman! Jika Stop Loss di ${formatIDR(stopLoss)} terkena, risiko Anda terkunci aman di ${formatIDR(actualMaxLoss)} (${riskPct}% modal).`;
+  if (adviceEl) adviceEl.innerText = `✅ Aman! Jika Stop Loss di ${formatIDR(stopLoss)} terkena, risiko Anda terkunci aman di ${formatIDR(actualMaxLoss)} (${riskPct}% modal).`;
+}
+
+// =============================================================
+// PIRAMIDA 3-TAHAP (MULTI-TRANCHE AVERAGING SWING) ENGINE
+// =============================================================
+function setPyramidBudget(amount) {
+  const input = document.getElementById('pyrTotalBudget');
+  if (input) {
+    input.value = amount;
+    runPyramidCalc();
+  }
+}
+
+function handlePyramidStockSelection(code) {
+  if (!code) return;
+  const stock = currentCandidates.find(c => c.code === code) || allTrackedStocks.find(s => s.code === code);
+  if (!stock) return;
+
+  const plan = stock.trading_plan || {
+    entry: stock.price,
+    stop_loss: roundToIDXTick(stock.price * 0.95),
+    tp1: roundToIDXTick(stock.price * 1.06)
+  };
+
+  const p1 = roundToIDXTick(plan.entry || stock.price);
+  const sl = roundToIDXTick(plan.stop_loss || Math.round(p1 * 0.95));
+  
+  // Smart tranche levels:
+  // Tahap 2: confirm support / test (+2%)
+  const p2 = roundToIDXTick(p1 * 1.02);
+  // Tahap 3: breakout resisten / TP1 (+5% - 6%)
+  const p3 = roundToIDXTick(plan.tp1 || p1 * 1.06);
+
+  document.getElementById('pyrPrice1').value = p1;
+  document.getElementById('pyrPrice2').value = p2;
+  document.getElementById('pyrPrice3').value = p3;
+  document.getElementById('pyrInitialSL').value = sl;
+
+  runPyramidCalc();
+}
+
+function runPyramidCalc() {
+  const budget = parseFloat(document.getElementById('pyrTotalBudget')?.value) || 20000000;
+  const p1 = parseFloat(document.getElementById('pyrPrice1')?.value) || 0;
+  const p2 = parseFloat(document.getElementById('pyrPrice2')?.value) || 0;
+  const p3 = parseFloat(document.getElementById('pyrPrice3')?.value) || 0;
+  const sl1 = parseFloat(document.getElementById('pyrInitialSL')?.value) || 0;
+
+  const budgetDisplay = document.getElementById('pyrBudgetDisplay');
+  if (budgetDisplay) budgetDisplay.innerText = formatIDR(budget);
+
+  // Update budget quick buttons active style
+  document.querySelectorAll('.pyr-budget-btn').forEach(btn => {
+    const valStr = btn.innerText.replace(/[^0-9]/g, '');
+    const num = parseInt(valStr) * 1000000;
+    if (num === budget) {
+      btn.className = 'pyr-budget-btn px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold text-[10px]';
+    } else {
+      btn.className = 'pyr-budget-btn px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-[10px] text-gray-300 border border-gray-700';
+    }
+  });
+
+  // Tahap 1: 30% Modal
+  const b1 = budget * 0.30;
+  let lots1 = p1 > 0 ? Math.floor(b1 / (p1 * 100)) : 0;
+  if (p1 > 0 && lots1 < 1 && b1 >= p1 * 100) lots1 = 1;
+  const shares1 = lots1 * 100;
+  const val1 = shares1 * p1;
+  const risk1 = (sl1 > 0 && p1 > sl1) ? (p1 - sl1) * shares1 : 0;
+  const riskPct1 = budget > 0 ? (risk1 / budget * 100).toFixed(1) : '0.0';
+
+  const t1LotsEl = document.getElementById('pyrT1Lots');
+  const t1ValEl = document.getElementById('pyrT1Val');
+  const t1RiskEl = document.getElementById('pyrT1Risk');
+  const t1RiskPctEl = document.getElementById('pyrT1RiskPct');
+
+  if (t1LotsEl) t1LotsEl.innerText = `${lots1.toLocaleString('id-ID')} Lot (${shares1.toLocaleString('id-ID')} Lbr)`;
+  if (t1ValEl) t1ValEl.innerText = formatIDR(val1);
+  if (t1RiskEl) t1RiskEl.innerText = risk1 > 0 ? `-${formatIDR(risk1)}` : 'Rp 0';
+  if (t1RiskPctEl) t1RiskPctEl.innerText = `(-${riskPct1}% Budget)`;
+
+  // Tahap 2: 40% Modal
+  const b2 = budget * 0.40;
+  let lots2 = p2 > 0 ? Math.floor(b2 / (p2 * 100)) : 0;
+  if (p2 > 0 && lots2 < 1 && b2 >= p2 * 100) lots2 = 1;
+  const shares2 = lots2 * 100;
+  const val2 = shares2 * p2;
+
+  const totShares12 = shares1 + shares2;
+  const totVal12 = val1 + val2;
+  const avg12 = totShares12 > 0 ? roundToIDXTick(totVal12 / totShares12) : 0;
+  
+  // Recommended SL Tahap 2:
+  // If p2 >= p1, ratchet SL to near p1 (BEP tranche 1)
+  // If p2 < p1, keep SL near sl1 or support low
+  let recSL2 = 0;
+  if (sl1 > 0 && p1 > 0) {
+    recSL2 = (p2 >= p1) ? roundToIDXTick(Math.max(sl1, p1 * 0.99)) : roundToIDXTick(Math.min(sl1, p2 * 0.96));
+  }
+
+  const t2LotsEl = document.getElementById('pyrT2Lots');
+  const t2ValEl = document.getElementById('pyrT2Val');
+  const t2AvgEl = document.getElementById('pyrT2Avg');
+  const t2NewSLEl = document.getElementById('pyrT2NewSL');
+
+  if (t2LotsEl) t2LotsEl.innerText = `${lots2.toLocaleString('id-ID')} Lot (${shares2.toLocaleString('id-ID')} Lbr)`;
+  if (t2ValEl) t2ValEl.innerText = formatIDR(val2);
+  if (t2AvgEl) t2AvgEl.innerText = `Avg: Rp ${formatIDR(avg12)}`;
+  if (t2NewSLEl) t2NewSLEl.innerText = recSL2 > 0 ? `SL Baru: Rp ${formatIDR(recSL2)}` : 'SL Baru: -';
+
+  // Tahap 3: 30% Modal
+  const b3 = budget * 0.30;
+  let lots3 = p3 > 0 ? Math.floor(b3 / (p3 * 100)) : 0;
+  if (p3 > 0 && lots3 < 1 && b3 >= p3 * 100) lots3 = 1;
+  const shares3 = lots3 * 100;
+  const val3 = shares3 * p3;
+
+  const totShares123 = shares1 + shares2 + shares3;
+  const totLots123 = lots1 + lots2 + lots3;
+  const totVal123 = val1 + val2 + val3;
+  const finalAvg = totShares123 > 0 ? roundToIDXTick(totVal123 / totShares123) : 0;
+
+  // Recommended SL Tahap 3:
+  // Ratchet to finalAvg (Zero Risk / BEP) or p2 (lock in profit)
+  const recSL3 = finalAvg > 0 ? (p2 > finalAvg ? roundToIDXTick(p2) : finalAvg) : 0;
+
+  const t3LotsEl = document.getElementById('pyrT3Lots');
+  const t3ValEl = document.getElementById('pyrT3Val');
+  const t3AvgEl = document.getElementById('pyrT3Avg');
+  const t3NewSLEl = document.getElementById('pyrT3NewSL');
+
+  if (t3LotsEl) t3LotsEl.innerText = `${lots3.toLocaleString('id-ID')} Lot (${shares3.toLocaleString('id-ID')} Lbr)`;
+  if (t3ValEl) t3ValEl.innerText = formatIDR(val3);
+  if (t3AvgEl) t3AvgEl.innerText = `Avg: Rp ${formatIDR(finalAvg)}`;
+  if (t3NewSLEl) t3NewSLEl.innerText = recSL3 >= finalAvg && recSL3 > 0 ? `🔒 SL: Rp ${formatIDR(recSL3)} (BEP)` : '🔒 Risk-Free';
+
+  // Summary Metrics
+  const totLotsEl = document.getElementById('pyrTotalLots');
+  const totSharesEl = document.getElementById('pyrTotalShares');
+  const totCostEl = document.getElementById('pyrTotalCost');
+  const costPctEl = document.getElementById('pyrCostPct');
+  const finalAvgEl = document.getElementById('pyrFinalAvg');
+  const avgDiffEl = document.getElementById('pyrAvgDiff');
+  const benefitEl = document.getElementById('pyrBenefitText');
+  const protSLEl = document.getElementById('pyrProtectedSL');
+  const protStatusEl = document.getElementById('pyrProtectionStatus');
+
+  if (totLotsEl) totLotsEl.innerText = `${totLots123.toLocaleString('id-ID')} Lot`;
+  if (totSharesEl) totSharesEl.innerText = `(${totShares123.toLocaleString('id-ID')} Lembar)`;
+  if (totCostEl) totCostEl.innerText = formatIDR(totVal123);
+  const costPct = budget > 0 ? ((totVal123 / budget) * 100).toFixed(1) : '0';
+  if (costPctEl) costPctEl.innerText = `(${costPct}% Budget)`;
+  if (finalAvgEl) finalAvgEl.innerText = `Rp ${formatIDR(finalAvg)}`;
+
+  // Comparison benefit
+  if (p3 > finalAvg && totShares123 > 0) {
+    const savedPerShare = p3 - finalAvg;
+    const totalSaved = savedPerShare * totShares123;
+    if (avgDiffEl) avgDiffEl.innerText = `Hemat Rp ${formatIDR(savedPerShare)}/lbr vs All-in Puncak`;
+    if (benefitEl) {
+      benefitEl.innerHTML = `
+        🛡️ <b>Hasil Luar Biasa:</b> Dibandingkan beli <i>All-In</i> di harga breakout Tahap 3 (Rp ${formatIDR(p3)}), strategi Piramida menghemat modal <b>Rp ${formatIDR(totalSaved)}</b> dengan harga rata-rata modal hanya <b>Rp ${formatIDR(finalAvg)}</b>. Stop Loss digeser ke <b>Rp ${formatIDR(recSL3)}</b>, posisi Anda kini <span class="text-emerald-400 font-bold">100% BEBAS RISIKO (Risk-Free Trade)</span>!
+      `;
+    }
+  } else {
+    if (avgDiffEl) avgDiffEl.innerText = 'Optimal Terhitung';
+    if (benefitEl) {
+      benefitEl.innerHTML = `
+        Jika harga koreksi setelah Tahap 1, Anda hanya rugi 30% modal pertama. Namun begitu tren saham terkonfirmasi naik dan Tahap 3 masuk, Stop Loss digeser ke harga Average (BEP), menjadikan posisi Anda 100% aman!
+      `;
+    }
+  }
+
+  if (protSLEl) protSLEl.innerText = recSL3 > 0 ? `Rp ${formatIDR(recSL3)}` : '-';
+  if (protStatusEl) protStatusEl.innerText = recSL3 >= finalAvg && recSL3 > 0 ? '🔒 BEP / Bebas Rugi' : 'Disiplin Proteksi';
+}
+
+function copyPyramidPlan() {
+  const code = document.getElementById('pyramidStockSelector')?.value || document.getElementById('calcStockSelector')?.value || 'SAHAM';
+  const budget = parseFloat(document.getElementById('pyrTotalBudget')?.value) || 20000000;
+  const p1 = parseFloat(document.getElementById('pyrPrice1')?.value) || 0;
+  const p2 = parseFloat(document.getElementById('pyrPrice2')?.value) || 0;
+  const p3 = parseFloat(document.getElementById('pyrPrice3')?.value) || 0;
+  const sl1 = parseFloat(document.getElementById('pyrInitialSL')?.value) || 0;
+
+  if (!p1) {
+    showToast("⚠️ Masukkan harga Beli Tahap 1 terlebih dahulu.");
+    return;
+  }
+
+  const t1Lots = document.getElementById('pyrT1Lots')?.innerText || '0 Lot';
+  const t1Val = document.getElementById('pyrT1Val')?.innerText || 'Rp 0';
+  const t2Lots = document.getElementById('pyrT2Lots')?.innerText || '0 Lot';
+  const t2Val = document.getElementById('pyrT2Val')?.innerText || 'Rp 0';
+  const t2SL = document.getElementById('pyrT2NewSL')?.innerText || '';
+  const t3Lots = document.getElementById('pyrT3Lots')?.innerText || '0 Lot';
+  const t3Val = document.getElementById('pyrT3Val')?.innerText || 'Rp 0';
+  const t3SL = document.getElementById('pyrT3NewSL')?.innerText || '';
+
+  const totLots = document.getElementById('pyrTotalLots')?.innerText || '0 Lot';
+  const totShares = document.getElementById('pyrTotalShares')?.innerText || '(0 Lembar)';
+  const totVal = document.getElementById('pyrTotalCost')?.innerText || 'Rp 0';
+  const finalAvg = document.getElementById('pyrFinalAvg')?.innerText || 'Rp 0';
+  const protectedSL = document.getElementById('pyrProtectedSL')?.innerText || '-';
+
+  const text = `📊 RENCANA SWING TRADING: PIRAMIDA 3-TAHAP (30% - 40% - 30%)
+Saham: ${code}
+Total Alokasi Modal: ${formatIDR(budget)}
+
+🔹 Tahap 1 (30% Modal - Initial Entry):
+• Harga Beli: Rp ${formatIDR(p1)}
+• Jumlah Posisi: ${t1Lots} (~${t1Val})
+• Stop Loss Awal: Rp ${formatIDR(sl1)}
+
+🔹 Tahap 2 (40% Modal - Konfirmasi Support):
+• Harga Beli: Rp ${formatIDR(p2)}
+• Jumlah Posisi: ${t2Lots} (~${t2Val})
+• ${t2SL}
+
+🔹 Tahap 3 (30% Modal - Breakout Resisten):
+• Harga Beli: Rp ${formatIDR(p3)}
+• Jumlah Posisi: ${t3Lots} (~${t3Val})
+• ${t3SL}
+
+🎯 HASIL AKUMULASI PENUH:
+• Total Posisi: ${totLots} ${totShares}
+• Total Modal Terpakai: ${totVal}
+• Modal Rata-Rata (Avg): ${finalAvg}
+• Stop Loss Terlindungi: ${protectedSL} (Bebas Risiko Rugi)
+
+Generated by Syariah Swing Radar Pro`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`✅ Rencana Piramida 3-Tahap ${code} berhasil disalin!`);
+  }).catch(() => {
+    showToast("Gagal menyalin rencana piramida.");
+  });
+}
+
+function addPyramidStage1ToJournal() {
+  const code = document.getElementById('pyramidStockSelector')?.value || document.getElementById('calcStockSelector')?.value || '';
+  const p1 = parseFloat(document.getElementById('pyrPrice1')?.value) || 0;
+  const sl1 = parseFloat(document.getElementById('pyrInitialSL')?.value) || 0;
+  const lots1Text = document.getElementById('pyrT1Lots')?.innerText || '';
+  const lots1 = parseInt(lots1Text.replace(/[^0-9]/g, '')) || 1;
+  const finalAvg = document.getElementById('pyrFinalAvg')?.innerText || '';
+
+  if (!code) {
+    showToast("Pilih kode saham terlebih dahulu.");
+    return;
+  }
+
+  closeStandaloneCalcModal();
+  openTradeEntryModal();
+
+  document.getElementById('entryTradeId').value = '';
+  document.getElementById('entryTicker').value = code;
+  handleEntryTickerChange();
+
+  document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+  if (p1 > 0) document.getElementById('entryPrice').value = p1;
+  if (lots1 > 0) document.getElementById('entryLots').value = lots1;
+  if (sl1 > 0) document.getElementById('entrySL').value = sl1;
+  
+  // Set trading note
+  document.getElementById('entryNotes').value = `Piramida Tahap 1 (30% Modal) • Target Avg: ${finalAvg}`;
+  calcEntryModalCapital();
+
+  showToast(`📝 Tahap 1 Piramida ${code} (${lots1} Lot @ Rp ${formatIDR(p1)}) siap dicatat ke Jurnal.`);
 }
 
 // -------------------------------------------------------------

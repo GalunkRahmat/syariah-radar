@@ -1,5 +1,5 @@
-// Service Worker for Syariah Swing Radar Pro - v1.9.9
-const CACHE_NAME = 'syariah-radar-v1.9.9';
+// Service Worker for Syariah Swing Radar Pro - v2.0.0
+const CACHE_NAME = 'syariah-radar-v2.0.0';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
