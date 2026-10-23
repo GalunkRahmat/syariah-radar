@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.0.1">
+  <link rel="stylesheet" href="/static/style.css?v=2.0.2">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -31,7 +31,7 @@
     if ('caches' in window) {
       caches.keys().then(function(keys) {
         keys.forEach(function(key) {
-          if (key !== 'syariah-radar-v2.0.1') {
+          if (key !== 'syariah-radar-v2.0.2') {
             console.log('Purging legacy cache:', key);
             caches.delete(key);
           }
@@ -2105,86 +2105,66 @@
   </div>
 
   <!-- ============================================================= -->
-  <!-- SMART TRAILING STOP ADJUSTMENT MODAL                          -->
+  <!-- WHATSAPP SIGNAL SNAPSHOT & SHARING MODAL                      -->
   <!-- ============================================================= -->
-  <div id="trailingStopModal" class="fixed inset-0 z-[65] bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 md:p-4">
-    <div class="bg-[#161b22] border border-gray-700 w-full max-w-md rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-5 space-y-4">
+  <div id="whatsappShareModal" class="fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 md:p-4">
+    <div class="bg-[#161b22] border border-gray-700 w-full max-w-md rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-5 space-y-3.5">
       
       <div class="flex items-center justify-between border-b border-gray-800 pb-3">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-            <i class="fa-solid fa-shield-halved"></i>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+            <i class="fa-brands fa-whatsapp"></i>
           </div>
           <div>
             <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>Smart Trailing Stop</span>
-              <span id="tsModalTicker" class="text-emerald-400 font-mono">AUTO</span>
+              <span>Bagikan Sinyal Saham</span>
+              <span id="waModalTicker" class="text-emerald-400 font-mono">AKRA</span>
             </h4>
-            <p class="text-[10px] text-gray-400">Atur batas pengaman profit swing trading</p>
+            <p class="text-[10px] text-gray-400">Siap kirim ke grup atau kontak WhatsApp Anda</p>
           </div>
         </div>
-        <button onclick="closeCustomTSModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center">
+        <button onclick="closeWhatsAppModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center">
           <i class="fa-solid fa-xmark text-xs"></i>
         </button>
       </div>
 
-      <!-- PRICE INFO OVERVIEW -->
-      <div class="grid grid-cols-3 gap-2 bg-[#0e1117] p-2.5 rounded-xl border border-gray-800 text-center font-mono text-xs">
-        <div>
-          <span class="text-[10px] text-gray-500 block">Harga Beli</span>
-          <span id="tsModalEntryPrice" class="font-bold text-white block">Rp 0</span>
-        </div>
-        <div>
-          <span class="text-[10px] text-gray-500 block">Harga Terkini</span>
-          <span id="tsModalCurrentPrice" class="font-bold text-blue-400 block">Rp 0</span>
-        </div>
-        <div>
-          <span class="text-[10px] text-gray-500 block">SL Saat Ini</span>
-          <span id="tsModalCurrentSL" class="font-bold text-red-400 block">Rp 0</span>
-        </div>
-      </div>
-
-      <!-- QUICK PRESETS BUTTONS -->
+      <!-- PREVIEW BOX -->
       <div class="space-y-1.5">
-        <label class="text-[11px] font-semibold text-gray-300 block">Pilihan Cepat Level Pengaman:</label>
-        <div class="grid grid-cols-3 gap-1.5 text-xs font-mono">
-          <button type="button" id="tsPresetBEP" onclick="selectTSPreset('bep')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-700 border border-gray-700 text-left transition">
-            <span class="block text-[10px] text-gray-400 font-sans font-medium">🛡️ Modal (BEP)</span>
-            <span id="tsPresetBEPPrice" class="block font-bold text-white">Rp 0</span>
-          </button>
-          <button type="button" id="tsPresetLockHalf" onclick="selectTSPreset('half')" class="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left transition">
-            <span class="block text-[10px] text-emerald-400 font-sans font-medium">🔒 Kunci 50%</span>
-            <span id="tsPresetHalfPrice" class="block font-bold text-emerald-300">Rp 0</span>
-          </button>
-          <button type="button" id="tsPresetLockMax" onclick="selectTSPreset('suggested')" class="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-left transition">
-            <span class="block text-[10px] text-blue-400 font-sans font-medium">⚡ Rekomendasi</span>
-            <span id="tsPresetSuggestedPrice" class="block font-bold text-blue-300">Rp 0</span>
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="text-gray-400 font-medium">Pratinjau Pesan yang Akan Dikirim:</span>
+          <button onclick="copyWAModalText()" class="text-emerald-400 hover:underline flex items-center gap-1 text-[10px]">
+            <i class="fa-solid fa-copy"></i> Salin
           </button>
         </div>
+        <textarea id="waModalPreviewText" readonly rows="8" class="w-full bg-[#0e1117] border border-gray-800 rounded-xl p-2.5 text-gray-300 font-mono text-[10px] md:text-[11px] focus:outline-none select-all resize-none leading-relaxed"></textarea>
       </div>
 
-      <!-- FORM -->
-      <form id="customTSForm" onsubmit="handleCustomTSSubmit(event)" class="space-y-3 text-xs">
-        <input type="hidden" id="customTSTradeId" value="">
-        <div>
-          <label class="text-gray-300 block mb-1 font-semibold">Harga Trailing Stop Baru (Rp):</label>
-          <input type="number" id="customTSInput" required min="1" step="1" oninput="calcCustomTSPreview()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-2 text-white font-mono text-sm focus:outline-none focus:border-emerald-500 font-bold">
+      <!-- INSTRUCTION NOTE -->
+      <div class="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-[10.5px] text-emerald-300 space-y-1">
+        <div class="flex items-center gap-1.5 font-bold text-emerald-400">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>Cara Kerja Otomatis:</span>
         </div>
+        <p class="text-gray-300 leading-tight">
+          Tidak perlu simpan nomor atau setting grup sebelumnya. Begitu tombol di bawah diklik, WhatsApp akan langsung terbuka dan menampilkan pilihan kontak/grup Anda. Teks sinyal otomatis sudah terisi!
+        </p>
+      </div>
 
-        <div id="customTSPreviewBox" class="p-2.5 rounded-xl bg-[#0e1117] border border-gray-800 text-center space-y-0.5">
-          <span class="text-[10px] text-gray-400 block">Status Proteksi:</span>
-          <span id="customTSPreviewText" class="text-xs font-bold font-mono text-emerald-400 block">+Rp 0 (+0.00%)</span>
-        </div>
-
-        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg">
-          <i class="fa-solid fa-lock"></i>
-          <span>Simpan & Terapkan Trailing Stop</span>
+      <!-- ACTION BUTTONS -->
+      <div class="space-y-2">
+        <a id="waModalDirectLink" href="#" target="_blank" rel="noopener noreferrer" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg">
+          <i class="fa-brands fa-whatsapp text-base"></i>
+          <span>Buka WhatsApp Sekarang</span>
+        </a>
+        <button onclick="copyWAModalText()" class="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs border border-gray-700 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-copy text-emerald-400"></i>
+          <span>Salin Teks ke Clipboard</span>
         </button>
-      </form>
+      </div>
 
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.0.1"></script>
+  <script src="/static/app.js?v=2.0.2"></script>
 </body>
 </html>

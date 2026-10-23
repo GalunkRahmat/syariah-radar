@@ -675,20 +675,69 @@ function generateStockSignalText(stock) {
 ⚠️ Disclaimer On: Riset mandiri & selalu disiplin Stop Loss.`;
 }
 
+function openWhatsAppModal(stock, text) {
+  const modal = document.getElementById('whatsappShareModal');
+  if (!modal) return;
+
+  const tickerEl = document.getElementById('waModalTicker');
+  const previewEl = document.getElementById('waModalPreviewText');
+  const linkEl = document.getElementById('waModalDirectLink');
+
+  if (tickerEl) tickerEl.innerText = stock.code || 'SAHAM';
+  if (previewEl) previewEl.value = text;
+  
+  const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+  if (linkEl) linkEl.href = waUrl;
+
+  modal.classList.remove('hidden');
+
+  // Also auto-copy to clipboard
+  copyToClipboard(text, `📲 Sinyal ${stock.code} Berhasil Disalin!`);
+
+  // Direct trigger attempt via temporary anchor element
+  try {
+    const directLink = document.createElement('a');
+    directLink.href = waUrl;
+    directLink.target = '_blank';
+    directLink.rel = 'noopener noreferrer';
+    document.body.appendChild(directLink);
+    directLink.click();
+    document.body.removeChild(directLink);
+  } catch (e) {
+    console.warn('Direct popup prevented, modal is open for user click:', e);
+  }
+}
+
+function closeWhatsAppModal() {
+  const modal = document.getElementById('whatsappShareModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function copyWAModalText() {
+  const previewEl = document.getElementById('waModalPreviewText');
+  if (previewEl && previewEl.value) {
+    copyToClipboard(previewEl.value, '✅ Teks Sinyal Berhasil Disalin ke Clipboard!');
+  }
+}
+
 function shareStockSignal(code) {
-  const stock = currentCandidates.find(c => c.code === code) || allTrackedStocks.find(s => s.code === code);
-  if (!stock) return;
+  const upper = (code || '').trim().toUpperCase();
+  const stock = currentCandidates.find(c => (c.code || '').trim().toUpperCase() === upper) ||
+                allTrackedStocks.find(s => (s.code || '').trim().toUpperCase() === upper) ||
+                currentOpenStock;
+  if (!stock) {
+    showToast("Data saham tidak ditemukan.");
+    return;
+  }
 
   const text = generateStockSignalText(stock);
-  copyToClipboard(text, `📲 Sinyal ${stock.code} Berhasil Disalin! Membuka WhatsApp...`);
-
-  const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
-  window.open(waUrl, '_blank');
+  openWhatsAppModal(stock, text);
 }
 
 function shareCurrentModalToWhatsApp() {
   if (!currentOpenStock) return;
-  shareStockSignal(currentOpenStock.code);
+  const text = generateStockSignalText(currentOpenStock);
+  openWhatsAppModal(currentOpenStock, text);
 }
 
 function copyCurrentModalPlan() {
