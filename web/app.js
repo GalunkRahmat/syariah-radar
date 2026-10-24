@@ -3946,6 +3946,8 @@ function handleScalingOutSubmit(event) {
     realizedPnl: realizedPnl,
     realizedPnlPct: realizedPnlPct,
     closedAt: Date.now(),
+    discipline: 'DISCIPLINED',
+    lessonNote: 'Realisasi 50% di TP1 & amankan modal (Auto-BEP) sesuai trading plan.',
     notes: (t.notes ? t.notes + ' • ' : '') + `[✂️ Realisasi Scaling Out ${lotsToSell} Lot di TP1/${formatIDR(exitPrice)}]`,
     isScalingOutTranche: true,
     parentTradeId: t.id
@@ -4183,6 +4185,129 @@ function renderPortfolioRiskAndSectors(trades) {
   }
 }
 
+// =============================================================
+// EVALUASI PSIKOLOGI & KEDISIPLINAN (TRADING POST-MORTEM ENGINE)
+// =============================================================
+const DISCIPLINE_TAGS = {
+  'DISCIPLINED': { label: '🎯 Sesuai Plan', color: 'emerald', bg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+  'FOMO': { label: '⚡ FOMO / Agresif', color: 'amber', bg: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  'EARLY_EXIT': { label: '🏃‍♂️ Keluar Kecepetan', color: 'blue', bg: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
+  'LATE_SL': { label: '🙈 Ragu Cut Loss', color: 'rose', bg: 'bg-rose-500/15 text-rose-300 border-rose-500/30' }
+};
+
+function getDisciplineBadge(val) {
+  return DISCIPLINE_TAGS[val] || null;
+}
+
+function renderDisciplineAnalytics(trades) {
+  const section = document.getElementById('disciplineAnalyticsSection');
+  if (!section) return;
+
+  const closedTrades = (trades || []).filter(t => t.status !== 'OPEN');
+  const totalClosed = closedTrades.length;
+
+  if (totalClosed === 0) {
+    const badgeEl = document.getElementById('disciplineBadge');
+    if (badgeEl) badgeEl.innerText = 'Disiplin: -%';
+    const pWin = document.getElementById('discWinRatePlan');
+    if (pWin) pWin.innerText = '-';
+    const pTrades = document.getElementById('discTradesPlan');
+    if (pTrades) pTrades.innerText = '0 Trade';
+    const pPnl = document.getElementById('discPnlPlan');
+    if (pPnl) pPnl.innerText = 'Rp 0';
+
+    const eWin = document.getElementById('discWinRateEmo');
+    if (eWin) eWin.innerText = '-';
+    const eTrades = document.getElementById('discTradesEmo');
+    if (eTrades) eTrades.innerText = '0 Trade';
+    const ePnl = document.getElementById('discPnlEmo');
+    if (ePnl) ePnl.innerText = 'Rp 0';
+
+    const insightEl = document.getElementById('disciplineInsightText');
+    if (insightEl) insightEl.innerHTML = 'Tutup transaksi pertama Anda dan pilih evaluasi kedisiplinan (🎯 Sesuai Plan atau ⚡ FOMO/Panik) untuk melihat analitik psikologi trading Anda.';
+    return;
+  }
+
+  // Split into Plan vs Emotional
+  const planTrades = closedTrades.filter(t => (t.discipline === 'DISCIPLINED' || (!t.discipline && Number(t.realizedPnl || 0) >= 0)));
+  const emoTrades = closedTrades.filter(t => (t.discipline && t.discipline !== 'DISCIPLINED'));
+
+  // Calculate Plan metrics
+  let planWins = 0;
+  let planPnlSum = 0;
+  planTrades.forEach(t => {
+    const pnl = Number(t.realizedPnl || 0);
+    planPnlSum += pnl;
+    if (pnl >= 0) planWins++;
+  });
+  const planWinRate = planTrades.length > 0 ? ((planWins / planTrades.length) * 100).toFixed(1) : '0.0';
+
+  // Calculate Emotional metrics
+  let emoWins = 0;
+  let emoPnlSum = 0;
+  emoTrades.forEach(t => {
+    const pnl = Number(t.realizedPnl || 0);
+    emoPnlSum += pnl;
+    if (pnl >= 0) emoWins++;
+  });
+  const emoWinRate = emoTrades.length > 0 ? ((emoWins / emoTrades.length) * 100).toFixed(1) : '0.0';
+
+  // Overall discipline score (% of trades following plan)
+  const disciplineScore = ((planTrades.length / totalClosed) * 100).toFixed(0);
+
+  // Update UI elements
+  const badgeEl = document.getElementById('disciplineBadge');
+  if (badgeEl) {
+    badgeEl.innerText = `Kepatuhan: ${disciplineScore}% (${planTrades.length}/${totalClosed})`;
+    if (Number(disciplineScore) >= 75) {
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    } else if (Number(disciplineScore) >= 50) {
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    } else {
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30';
+    }
+  }
+
+  const pWin = document.getElementById('discWinRatePlan');
+  if (pWin) pWin.innerText = `${planWinRate}% Win`;
+  const pTrades = document.getElementById('discTradesPlan');
+  if (pTrades) pTrades.innerText = `${planTrades.length} Trade`;
+  const planPnlEl = document.getElementById('discPnlPlan');
+  if (planPnlEl) {
+    planPnlEl.innerText = `${planPnlSum >= 0 ? '+' : ''}${formatIDR(planPnlSum)}`;
+    planPnlEl.className = `font-bold block ${planPnlSum >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+  }
+
+  const eWin = document.getElementById('discWinRateEmo');
+  if (eWin) eWin.innerText = emoTrades.length > 0 ? `${emoWinRate}% Win` : '0 Trade';
+  const eTrades = document.getElementById('discTradesEmo');
+  if (eTrades) eTrades.innerText = `${emoTrades.length} Trade`;
+  const emoPnlEl = document.getElementById('discPnlEmo');
+  if (emoPnlEl) {
+    emoPnlEl.innerText = `${emoPnlSum >= 0 ? '+' : ''}${formatIDR(emoPnlSum)}`;
+    emoPnlEl.className = `font-bold block ${emoPnlSum >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+  }
+
+  // Educational Insight formulation
+  const insightEl = document.getElementById('disciplineInsightText');
+  if (insightEl) {
+    if (emoTrades.length === 0 && planTrades.length > 0) {
+      insightEl.innerHTML = `
+        <strong>Konsistensi Sempurna!</strong> Seluruh <strong>${totalClosed} transaksi</strong> Anda dieksekusi dengan disiplin sesuai trading plan (Win Rate <strong>${planWinRate}%</strong>, Net Profit <strong>+${formatIDR(planPnlSum)}</strong>). Pertahankan pola pikir juara ini!
+      `;
+    } else if (Number(planWinRate) > Number(emoWinRate)) {
+      const ratio = (Number(emoWinRate) > 0) ? (Number(planWinRate) / Number(emoWinRate)).toFixed(1) : (Number(planWinRate) / 20).toFixed(1);
+      insightEl.innerHTML = `
+        <strong>Kunci Sukses Terbukti:</strong> Transaksi yang <strong>Disiplin Sesuai Plan menghasilkan Win Rate ${planWinRate}%</strong> (Net: +${formatIDR(planPnlSum)}), sedangkan transaksi <strong>Emosional (FOMO/Panik) hanya ${emoWinRate}%</strong>. Anda <strong>${ratio}x lebih konsisten menang</strong> saat mematuhi trading plan!
+      `;
+    } else {
+      insightEl.innerHTML = `
+        Tercatat <strong>${emoTrades.length} transaksi emosional</strong> dari total ${totalClosed} trade. Evaluasi kembali alasan entry agar tidak mengejar saham yang sudah naik tinggi atau panik sebelum target tercapai.
+      `;
+    }
+  }
+}
+
 function renderJournalView() {
   const container = document.getElementById('journalTradesList');
   if (!container) return;
@@ -4283,6 +4408,9 @@ function renderJournalView() {
   // Update Portfolio Risk & Sector Concentration
   renderPortfolioRiskAndSectors(trades);
 
+  // Update Trading Post-Mortem & Psychological Discipline Analytics
+  renderDisciplineAnalytics(trades);
+
   // Update Filter Counters
   const countAll = trades.length;
   const countOpen = trades.filter(t => t.status === 'OPEN').length;
@@ -4375,6 +4503,12 @@ function renderJournalView() {
       }
       if (t.isScalingOutTranche) {
         statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-scissors text-blue-400"></i> Realisasi Sebagian</span>`;
+      }
+      if (t.discipline) {
+        const discBadge = getDisciplineBadge(t.discipline);
+        if (discBadge) {
+          statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${discBadge.bg} flex items-center gap-1">${discBadge.label}</span>`;
+        }
       }
     }
 
@@ -4530,6 +4664,14 @@ function renderJournalView() {
           <div class="text-[11px] text-gray-400 italic bg-gray-900/40 px-2.5 py-1 rounded-lg border border-gray-800/60 flex items-center gap-1.5">
             <i class="fa-regular fa-comment-dots text-emerald-400"></i>
             <span>${t.notes}</span>
+          </div>
+        ` : ''}
+
+        <!-- POST-MORTEM LESSON NOTE -->
+        ${t.lessonNote ? `
+          <div class="text-[10.5px] text-amber-300/90 italic bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/25 flex items-start gap-1.5">
+            <i class="fa-solid fa-lightbulb text-amber-400 text-xs mt-0.5 shrink-0"></i>
+            <span><strong>Pelajaran Post-Mortem:</strong> "${t.lessonNote}"</span>
           </div>
         ` : ''}
 
@@ -4810,6 +4952,15 @@ function openTradeExitModal(tradeId) {
   const defaultExitPrice = (t.tp1 && latestPrice >= t.tp1) ? t.tp1 : latestPrice;
   document.getElementById('exitPriceInput').value = defaultExitPrice;
 
+  // Post-Mortem / Evaluasi Kedisiplinan default selection
+  const selectedDiscipline = t.discipline || 'DISCIPLINED';
+  const disciplineRadios = document.querySelectorAll('input[name="exitDiscipline"]');
+  disciplineRadios.forEach(r => {
+    r.checked = (r.value === selectedDiscipline);
+  });
+  const lessonInput = document.getElementById('exitLessonNote');
+  if (lessonInput) lessonInput.value = t.lessonNote || '';
+
   calcExitModalPnL();
   modal.classList.remove('hidden');
 }
@@ -4897,12 +5048,18 @@ function handleTradeExitSubmit(event) {
   const pnl = (exitPrice - t.entryPrice) * shares;
   const pnlPct = ((exitPrice - t.entryPrice) / t.entryPrice) * 100;
 
+  const selectedDisciplineEl = document.querySelector('input[name="exitDiscipline"]:checked');
+  const disciplineVal = selectedDisciplineEl ? selectedDisciplineEl.value : 'DISCIPLINED';
+  const lessonNoteVal = (document.getElementById('exitLessonNote')?.value || '').trim();
+
   t.exitPrice = exitPrice;
   t.exitDate = exitDate || new Date().toISOString().split('T')[0];
   t.realizedPnl = pnl;
   t.realizedPnlPct = pnlPct;
   t.status = (pnl >= 0) ? 'WIN' : 'LOSS';
   t.closedAt = Date.now();
+  t.discipline = disciplineVal;
+  t.lessonNote = lessonNoteVal;
 
   saveJournalTrades(trades);
   closeTradeExitModal();
@@ -4951,11 +5108,12 @@ function exportJournalCSV() {
     return;
   }
 
-  let csv = 'ID,Kode,Nama,Status,Tanggal Beli,Harga Beli,Jumlah Lot,Total Lembar,Total Modal,Stop Loss,Target TP1,Target TP2,Tanggal Jual,Harga Jual,Realized PnL (Rp),Realized PnL (%),Catatan\n';
+  let csv = 'ID,Kode,Nama,Status,Tanggal Beli,Harga Beli,Jumlah Lot,Total Lembar,Total Modal,Stop Loss,Target TP1,Target TP2,Tanggal Jual,Harga Jual,Realized PnL (Rp),Realized PnL (%),Evaluasi Kedisiplinan,Pelajaran Post-Mortem,Catatan\n';
 
   trades.forEach(t => {
     const shares = t.lots * 100;
     const capital = t.entryPrice * shares;
+    const discLabel = DISCIPLINE_TAGS[t.discipline]?.label || (t.discipline || '');
     const row = [
       t.id,
       t.code,
@@ -4973,6 +5131,8 @@ function exportJournalCSV() {
       t.exitPrice || '',
       t.realizedPnl || 0,
       (t.realizedPnlPct || 0).toFixed(2),
+      `"${discLabel.replace(/"/g, '""')}"`,
+      `"${(t.lessonNote || '').replace(/"/g, '""')}"`,
       `"${(t.notes || '').replace(/"/g, '""')}"`
     ];
     csv += row.join(',') + '\n';

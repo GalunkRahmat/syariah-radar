@@ -671,6 +671,17 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #e2e8f0 !important;
 }
 
+.light-theme #disciplineAnalyticsSection {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme #disciplineAnalyticsSection .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+
 
 
 

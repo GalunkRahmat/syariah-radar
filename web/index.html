@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.3.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.4.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -1962,6 +1962,67 @@
 
         </div>
 
+        <!-- ============================================================= -->
+        <!-- EVALUASI PSIKOLOGI & KEDISIPLINAN (TRADING POST-MORTEM) WIDGET -->
+        <!-- ============================================================= -->
+        <div id="disciplineAnalyticsSection" class="bg-[#0e1117] border border-gray-800 rounded-2xl p-3.5 space-y-2.5 transition-all duration-300">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs">
+                🧠
+              </div>
+              <div>
+                <h4 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                  <span>Evaluasi Psikologi & Kedisiplinan (Post-Mortem)</span>
+                </h4>
+                <p class="text-[10px] text-gray-400">Korelasi nyata antara kepatuhan trading plan vs hasil keuntungan</p>
+              </div>
+            </div>
+            <span id="disciplineBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Disiplin: -%
+            </span>
+          </div>
+
+          <!-- COMPARISON METRICS GRID: PLAN VS FOMO/PANIC -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <!-- DISCIPLINED -->
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase flex items-center gap-1">
+                  🎯 Sesuai Trading Plan
+                </span>
+                <span id="discWinRatePlan" class="font-mono font-black text-xs text-emerald-300">-</span>
+              </div>
+              <div class="flex items-baseline justify-between text-[11px] font-mono">
+                <span id="discTradesPlan" class="text-gray-400 text-[10px]">0 Trade</span>
+                <span id="discPnlPlan" class="font-bold text-emerald-400 block">+Rp 0</span>
+              </div>
+            </div>
+
+            <!-- EMOTIONAL / FOMO / PANIC -->
+            <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-amber-400 font-bold uppercase flex items-center gap-1">
+                  ⚡ FOMO / Emosional
+                </span>
+                <span id="discWinRateEmo" class="font-mono font-black text-xs text-amber-300">-</span>
+              </div>
+              <div class="flex items-baseline justify-between text-[11px] font-mono">
+                <span id="discTradesEmo" class="text-gray-400 text-[10px]">0 Trade</span>
+                <span id="discPnlEmo" class="font-bold text-amber-400 block">Rp 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PSYCHOLOGICAL INSIGHT BANNER -->
+          <div id="disciplineInsightBox" class="p-2.5 rounded-xl bg-[#161b22] border border-gray-800 text-[10.5px] text-gray-300 flex items-start gap-2">
+            <i class="fa-solid fa-lightbulb text-amber-400 text-xs mt-0.5 shrink-0"></i>
+            <p id="disciplineInsightText" class="leading-relaxed">
+              Tutup transaksi Anda dan beri label evaluasi (Sesuai Plan / FOMO) untuk melihat insight kedisiplinan trading Anda.
+            </p>
+          </div>
+        </div>
+
         <!-- FILTER TABS -->
         <div class="flex items-center justify-between gap-2 border-b border-gray-800 pb-2.5 overflow-x-auto">
           <div class="flex items-center gap-1.5 shrink-0">
@@ -2246,6 +2307,44 @@
           <button type="button" onclick="const tid = currentExitTradeId; closeTradeExitModal(); openScalingOutModal(tid);" class="underline font-bold text-amber-400 hover:text-amber-300 transition">
             Jual 50% Saja &rarr;
           </button>
+        </div>
+
+        <!-- EVALUASI PSIKOLOGI & KEDISIPLINAN (TRADING POST-MORTEM) -->
+        <div class="p-3 rounded-xl bg-[#0e1117] border border-gray-800 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-bold text-white flex items-center gap-1.5">
+              <span>🧠 Evaluasi Kedisiplinan & Mindset:</span>
+            </label>
+            <span class="text-[9.5px] text-gray-500">Kunci Konsistensi Swing</span>
+          </div>
+
+          <!-- EVALUATION OPTIONS -->
+          <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/20 transition">
+              <input type="radio" name="exitDiscipline" value="DISCIPLINED" checked class="text-emerald-500 focus:ring-0">
+              <span class="text-emerald-300 font-semibold leading-tight">🎯 Sesuai Plan</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 cursor-pointer hover:bg-amber-500/20 transition">
+              <input type="radio" name="exitDiscipline" value="FOMO" class="text-amber-500 focus:ring-0">
+              <span class="text-amber-300 font-semibold leading-tight">⚡ FOMO / Agresif</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 cursor-pointer hover:bg-blue-500/20 transition">
+              <input type="radio" name="exitDiscipline" value="EARLY_EXIT" class="text-blue-300 font-semibold leading-tight">
+              <span class="text-blue-300 font-semibold leading-tight">🏃‍♂️ Keluar Kecepetan</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 cursor-pointer hover:bg-rose-500/20 transition">
+              <input type="radio" name="exitDiscipline" value="LATE_SL" class="text-rose-300 font-semibold leading-tight">
+              <span class="text-rose-300 font-semibold leading-tight">🙈 Ragu Cut Loss</span>
+            </label>
+          </div>
+
+          <!-- OPTIONAL LESSON / POST-MORTEM NOTE -->
+          <div>
+            <input type="text" id="exitLessonNote" placeholder="Catatan evaluasi / pelajaran dari trade ini (opsional)..." class="w-full bg-[#161b22] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white placeholder-gray-500 text-[10.5px] focus:outline-none focus:border-emerald-500 font-medium">
+          </div>
         </div>
 
         <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg">
@@ -2593,6 +2692,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.3.0"></script>
+  <script src="/static/app.js?v=2.4.0"></script>
 </body>
 </html>
