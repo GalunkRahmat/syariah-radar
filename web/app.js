@@ -1216,7 +1216,7 @@ async function handleHistoryDateChange(date) {
 
       const data = await res.json();
       currentCandidates = data.candidates || [];
-      allTrackedStocks = data.candidates || [];
+      allTrackedStocks = data.all_stocks || data.candidates || [];
 
       document.getElementById('statScanned').innerText = data.scanned_count || currentCandidates.length;
       document.getElementById('statCandidates').innerText = currentCandidates.length;
@@ -5406,24 +5406,34 @@ function getHeatmapTileColor(pct) {
   }
 }
 
+function showDetail(ticker) {
+  openChartFromBroksum(ticker);
+}
+window.showDetail = showDetail;
+
 function renderSectorHeatmap() {
   const container = document.getElementById('heatmapGrid');
   if (!container) return;
 
-  const scope = document.getElementById('heatmapScopeSelect')?.value || 'candidates';
+  const scope = document.getElementById('heatmapScopeSelect')?.value || 'all';
   const sortBy = document.getElementById('heatmapSortSelect')?.value || 'performance';
 
-  // Choose dataset
+  // Choose dataset: 'all' (Universe 75 Saham) or 'candidates' (Hanya Kandidat Sinyal Beli)
   let sourceStocks = (scope === 'all')
     ? (allTrackedStocks && allTrackedStocks.length > 0 ? allTrackedStocks : currentCandidates)
     : currentCandidates;
 
   if (!sourceStocks || sourceStocks.length === 0) {
     container.innerHTML = `
-      <div class="col-span-full py-12 text-center text-gray-400 bg-[#161b22] border border-gray-800 rounded-2xl p-6">
-        <i class="fa-solid fa-chart-pie text-2xl text-emerald-400 mb-2"></i>
-        <p class="font-semibold text-sm">Belum ada data saham untuk sektor heatmap.</p>
-        <p class="text-xs text-gray-500 mt-1">Lakukan scan atau pilih cakupan Semua Saham Syariah.</p>
+      <div class="col-span-full py-12 text-center text-gray-400 bg-[#161b22] border border-gray-800 rounded-2xl p-6 space-y-2">
+        <i class="fa-solid fa-chart-pie text-3xl text-emerald-400 mb-1"></i>
+        <p class="font-bold text-sm text-gray-200">Belum ada kandidat sinyal beli untuk sektor heatmap hari ini.</p>
+        <p class="text-xs text-gray-400 max-w-md mx-auto">Ganti cakupan ke "Semua Saham Syariah (Universe)" untuk memantau rotasi seluruh 75 saham syariah per sektor.</p>
+        <div class="pt-2">
+          <button type="button" onclick="document.getElementById('heatmapScopeSelect').value='all'; renderSectorHeatmap();" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow">
+            Tampilkan Semua 75 Saham Syariah (Universe)
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -5479,11 +5489,11 @@ function renderSectorHeatmap() {
       const isCand = currentCandidates.some(c => c.code === s.code);
 
       return `
-        <button type="button" onclick="showDetail('${s.code}')" class="heatmap-tile p-2 rounded-xl text-center border ${colors.bg} ${colors.border} flex flex-col justify-between items-center cursor-pointer relative" title="${s.code} - ${s.name || ''} (${pctFormatted})">
-          ${isCand ? '<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" title="Kandidat Radar"></span>' : ''}
+        <button type="button" onclick="openChartFromBroksum('${s.code}')" class="heatmap-tile p-2 rounded-xl text-center border ${colors.bg} ${colors.border} flex flex-col justify-between items-center cursor-pointer relative hover:brightness-110 transition shadow-sm" title="${s.code} - ${s.name || ''} (${pctFormatted})">
+          ${isCand ? '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#161b22]" title="Kandidat Sinyal Beli Radar"></span>' : ''}
           <span class="font-extrabold text-xs block tracking-wide">${s.code}</span>
-          <span class="text-[10px] font-mono font-bold ${colors.textPct} block">${pctFormatted}</span>
-          <span class="text-[9px] font-mono opacity-85 block">Rp ${formatRupiah(s.price || 0)}</span>
+          <span class="text-[10px] font-mono font-bold ${colors.textPct} block leading-tight">${pctFormatted}</span>
+          <span class="text-[9px] font-mono opacity-85 block">${formatIDR(s.price || 0)}</span>
         </button>
       `;
     }).join('');

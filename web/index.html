@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.5.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.6.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -468,8 +468,8 @@
           
           <div class="flex items-center gap-1.5 text-xs">
             <select id="heatmapScopeSelect" onchange="renderSectorHeatmap()" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
-              <option value="candidates" selected>Hanya Kandidat Radar</option>
-              <option value="all">Semua Saham Syariah (Universe)</option>
+              <option value="all" selected>Semua Saham Syariah (Universe 75 Saham)</option>
+              <option value="candidates">Hanya Kandidat Sinyal Beli</option>
             </select>
             <select id="heatmapSortSelect" onchange="renderSectorHeatmap()" class="bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none focus:border-emerald-500">
               <option value="performance" selected>Kinerja Tertinggi (Top Gainer)</option>
@@ -2709,6 +2709,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.5.0"></script>
+  <script src="/static/app.js?v=2.6.0"></script>
 </body>
 </html>
