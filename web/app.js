@@ -3583,6 +3583,15 @@ function applyTrailingStop(tradeId, targetPrice) {
     return;
   }
 
+  // Preserve initial Stop Loss before trailing, so trader can cancel/reset anytime
+  if (!trade.initialStopLoss) {
+    if (trade.stopLoss && Number(trade.stopLoss) <= trade.entryPrice) {
+      trade.initialStopLoss = Number(trade.stopLoss);
+    } else {
+      trade.initialStopLoss = roundToIDXTick(trade.entryPrice * 0.94);
+    }
+  }
+
   trade.stopLoss = price;
   saveJournalTrades(trades, true);
   renderJournalView();
@@ -3592,12 +3601,37 @@ function applyTrailingStop(tradeId, targetPrice) {
   const lockedPct = ((price - trade.entryPrice) / trade.entryPrice) * 100;
 
   if (price > trade.entryPrice) {
-    showToast(`🔒 Trailing Stop ${trade.code} diaktifkan di Rp ${formatIDR(price)}! Profit minimal terkunci +${formatIDR(lockedProfit)} (+${lockedPct.toFixed(1)}%).`);
+    showToast(`🔒 Trailing Stop ${trade.code} diaktifkan di ${formatIDR(price)}! Profit minimal terkunci +${formatIDR(lockedProfit)} (+${lockedPct.toFixed(1)}%).`);
   } else if (price === trade.entryPrice) {
-    showToast(`🛡️ Stop Loss ${trade.code} digeser ke harga modal (BEP Rp ${formatIDR(price)}). Bebas risiko rugi!`);
+    showToast(`🛡️ Stop Loss ${trade.code} digeser ke harga modal (BEP ${formatIDR(price)}). Bebas risiko rugi!`);
   } else {
-    showToast(`Batas Stop Loss ${trade.code} disesuaikan ke Rp ${formatIDR(price)}.`);
+    showToast(`Batas Stop Loss ${trade.code} disesuaikan ke ${formatIDR(price)}.`);
   }
+}
+
+function cancelTrailingStop(tradeId) {
+  const trades = getJournalTrades();
+  const trade = trades.find(item => item.id === tradeId);
+  if (!trade) {
+    showToast("Data transaksi tidak ditemukan.");
+    return;
+  }
+
+  // Restore initial stop loss
+  const restoredSL = trade.initialStopLoss || roundToIDXTick(trade.entryPrice * 0.94);
+  trade.stopLoss = restoredSL;
+
+  saveJournalTrades(trades, true);
+  renderJournalView();
+
+  showToast(`↩️ Trailing Stop ${trade.code} dibatalkan. Batas Stop Loss dikembalikan ke ${formatIDR(restoredSL)} (Proteksi awal).`);
+}
+
+function cancelCurrentModalTS() {
+  if (!currentTSModalTrade) return;
+  const tradeId = currentTSModalTrade.id;
+  closeCustomTSModal();
+  cancelTrailingStop(tradeId);
 }
 
 function openCustomTSModal(tradeId) {
@@ -3615,17 +3649,27 @@ function openCustomTSModal(tradeId) {
 
   document.getElementById('customTSTradeId').value = trade.id;
   document.getElementById('tsModalTicker').innerText = trade.code;
-  document.getElementById('tsModalEntryPrice').innerText = 'Rp ' + formatIDR(trade.entryPrice);
-  document.getElementById('tsModalCurrentPrice').innerText = 'Rp ' + formatIDR(currentPrice);
-  document.getElementById('tsModalCurrentSL').innerText = trade.stopLoss ? ('Rp ' + formatIDR(trade.stopLoss)) : '-';
+  document.getElementById('tsModalEntryPrice').innerText = formatIDR(trade.entryPrice);
+  document.getElementById('tsModalCurrentPrice').innerText = formatIDR(currentPrice);
+  document.getElementById('tsModalCurrentSL').innerText = trade.stopLoss ? formatIDR(trade.stopLoss) : '-';
 
   const bep = ts ? ts.bepPrice : roundToIDXTick(trade.entryPrice * 1.008);
   const half = ts ? ts.halfPrice : roundToIDXTick(trade.entryPrice + (currentPrice - trade.entryPrice) * 0.5);
   const suggested = ts ? ts.suggestedPrice : half;
 
-  document.getElementById('tsPresetBEPPrice').innerText = 'Rp ' + formatIDR(bep);
-  document.getElementById('tsPresetHalfPrice').innerText = 'Rp ' + formatIDR(half);
-  document.getElementById('tsPresetSuggestedPrice').innerText = 'Rp ' + formatIDR(suggested);
+  document.getElementById('tsPresetBEPPrice').innerText = formatIDR(bep);
+  document.getElementById('tsPresetHalfPrice').innerText = formatIDR(half);
+  document.getElementById('tsPresetSuggestedPrice').innerText = formatIDR(suggested);
+
+  // Show or hide cancel button depending on whether trailing stop is active
+  const cancelBtn = document.getElementById('customTSCancelBtn');
+  if (cancelBtn) {
+    if (trade.stopLoss && Number(trade.stopLoss) > trade.entryPrice) {
+      cancelBtn.classList.remove('hidden');
+    } else {
+      cancelBtn.classList.add('hidden');
+    }
+  }
 
   const defaultVal = suggested > 0 ? suggested : (trade.stopLoss || bep);
   const inputEl = document.getElementById('customTSInput');
@@ -3725,7 +3769,7 @@ function openScalingOutModal(tradeId) {
   const totalLots = Number(trade.lots) || 1;
 
   document.getElementById('soTradeId').value = trade.id;
-  document.getElementById('soModalTickerSub').innerText = `${trade.code} • ${totalLots} Lot (${(totalLots * 100).toLocaleString('id-ID')} Lbr) • Beli di Rp ${formatIDR(trade.entryPrice)}`;
+  document.getElementById('soModalTickerSub').innerText = `${trade.code} • ${totalLots} Lot (${(totalLots * 100).toLocaleString('id-ID')} Lbr) • Beli di ${formatIDR(trade.entryPrice)}`;
   document.getElementById('soTotalLotBadge').innerText = `Total: ${totalLots} Lot`;
 
   const today = new Date().toISOString().split('T')[0];
@@ -3768,14 +3812,14 @@ function openScalingOutModal(tradeId) {
   // Update TP1 quick button label
   const tp1Btn = document.getElementById('soQuickTP1Btn');
   if (tp1Btn) {
-    tp1Btn.innerText = trade.tp1 ? `Pakai TP1 (Rp ${formatIDR(trade.tp1)})` : 'Pakai Harga Pasar';
+    tp1Btn.innerText = trade.tp1 ? `Pakai TP1 (${formatIDR(trade.tp1)})` : 'Pakai Harga Pasar';
   }
 
   // BEP preview
   const bepPrice = roundToIDXTick(trade.entryPrice * 1.008);
   const bepEl = document.getElementById('soBEPPriceText');
   if (bepEl) {
-    bepEl.innerText = `Rp ${formatIDR(bepPrice)} (BEP Aman)`;
+    bepEl.innerText = `${formatIDR(bepPrice)} (BEP Aman)`;
   }
 
   calcScalingOutPreview();
@@ -3846,7 +3890,7 @@ function calcScalingOutPreview() {
 
   const sign = realizedPnl >= 0 ? '+' : '';
   if (amountEl) {
-    amountEl.innerText = `${sign}Rp ${formatIDR(realizedPnl)}`;
+    amountEl.innerText = `${sign}${formatIDR(realizedPnl)}`;
     amountEl.className = `text-base font-extrabold font-mono ${realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'} block`;
   }
   if (pctEl) {
@@ -3902,7 +3946,7 @@ function handleScalingOutSubmit(event) {
     realizedPnl: realizedPnl,
     realizedPnlPct: realizedPnlPct,
     closedAt: Date.now(),
-    notes: (t.notes ? t.notes + ' • ' : '') + `[✂️ Realisasi Scaling Out ${lotsToSell} Lot di TP1/Rp ${formatIDR(exitPrice)}]`,
+    notes: (t.notes ? t.notes + ' • ' : '') + `[✂️ Realisasi Scaling Out ${lotsToSell} Lot di TP1/${formatIDR(exitPrice)}]`,
     isScalingOutTranche: true,
     parentTradeId: t.id
   };
@@ -3914,14 +3958,14 @@ function handleScalingOutSubmit(event) {
   t.stopLoss = Math.max(Number(t.stopLoss) || 0, bepPrice);
   t.scalingOutDone = true;
   t.scaledLots = (t.scaledLots || 0) + lotsToSell;
-  t.notes = (t.notes ? t.notes + ' • ' : '') + `[✂️ Sisa ${remainingLots} Lot (SL di BEP Rp ${formatIDR(t.stopLoss)})]`;
+  t.notes = (t.notes ? t.notes + ' • ' : '') + `[✂️ Sisa ${remainingLots} Lot (SL di BEP ${formatIDR(t.stopLoss)})]`;
 
   trades.push(realizedTranche);
   saveJournalTrades(trades, true);
   closeScalingOutModal();
   renderJournalView();
 
-  showToast(`✂️ Sukses Realisasi Separuh! Cuan +Rp ${formatIDR(realizedPnl)} (+${realizedPnlPct.toFixed(1)}%) masuk kantong. Sisa ${remainingLots} Lot dijamin bebas risiko (SL di BEP Rp ${formatIDR(t.stopLoss)})!`);
+  showToast(`✂️ Sukses Realisasi Separuh! Cuan +${formatIDR(realizedPnl)} (+${realizedPnlPct.toFixed(1)}%) masuk kantong. Sisa ${remainingLots} Lot dijamin bebas risiko (SL di BEP ${formatIDR(t.stopLoss)})!`);
 }
 
 function soSellSingleLotFull() {
@@ -4217,16 +4261,24 @@ function renderJournalView() {
                   </div>
                   <p class="text-[10px] text-gray-400 leading-tight">
                     ${isTrailingActive 
-                      ? `Pengaman cuan aktif di <span class="text-emerald-400 font-mono font-bold">Rp ${formatIDR(t.stopLoss)}</span> (Minimal aman +${formatIDR((t.stopLoss - t.entryPrice) * shares)}).`
+                      ? `Pengaman cuan aktif di <span class="text-emerald-400 font-mono font-bold">${formatIDR(t.stopLoss)}</span> (Minimal aman +${formatIDR((t.stopLoss - t.entryPrice) * shares)}).`
                       : `Saham cuan <span class="text-emerald-400 font-mono font-bold">+${ts.gainPct.toFixed(1)}%</span>. Kunci cuan agar tidak berubah minus.`
                     }
                   </p>
                 </div>
               </div>
-              <button onclick="openCustomTSModal('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white text-[10px] font-medium border border-gray-700 transition flex items-center gap-1">
-                <i class="fa-solid fa-sliders text-emerald-400 text-[10px]"></i>
-                <span>Sesuaikan</span>
-              </button>
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${isTrailingActive ? `
+                  <button onclick="cancelTrailingStop('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800/90 hover:bg-rose-500/20 text-gray-400 hover:text-rose-300 text-[10px] font-medium border border-gray-700 hover:border-rose-500/30 transition flex items-center gap-1" title="Batalkan Trailing Stop & Kembalikan ke SL Awal">
+                    <i class="fa-solid fa-rotate-left text-[9px]"></i>
+                    <span>Batalkan</span>
+                  </button>
+                ` : ''}
+                <button onclick="openCustomTSModal('${t.id}')" class="px-2 py-1 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white text-[10px] font-medium border border-gray-700 transition flex items-center gap-1">
+                  <i class="fa-solid fa-sliders text-emerald-400 text-[10px]"></i>
+                  <span>Sesuaikan</span>
+                </button>
+              </div>
             </div>
 
             <!-- ONE-CLICK BUTTONS -->
@@ -4234,18 +4286,24 @@ function renderJournalView() {
               ${ts.suggestedPrice > (t.stopLoss || 0) ? `
                 <button onclick="applyTrailingStop('${t.id}', ${ts.suggestedPrice})" class="flex-1 min-w-[150px] py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition flex items-center justify-center gap-1.5 shadow">
                   <i class="fa-solid fa-lock text-[10px]"></i>
-                  <span>Kunci di Rp ${formatIDR(ts.suggestedPrice)} (+${ts.suggestedPct.toFixed(1)}%)</span>
+                  <span>Kunci di ${formatIDR(ts.suggestedPrice)} (+${ts.suggestedPct.toFixed(1)}%)</span>
                 </button>
               ` : `
-                <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1 px-1">
-                  <i class="fa-solid fa-check"></i> Trailing Stop Terkunci Optimal di Rp ${formatIDR(t.stopLoss)}
-                </span>
+                <div class="flex items-center justify-between w-full flex-wrap gap-2">
+                  <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1 px-1">
+                    <i class="fa-solid fa-check"></i> Trailing Stop Terkunci Optimal di ${formatIDR(t.stopLoss)}
+                  </span>
+                  <button onclick="cancelTrailingStop('${t.id}')" class="py-1 px-2.5 rounded-lg bg-gray-800 hover:bg-rose-500/20 text-gray-400 hover:text-rose-300 border border-gray-700 hover:border-rose-500/30 font-medium text-[10.5px] transition inline-flex items-center gap-1" title="Batalkan Trailing Stop & Kembalikan ke SL Awal">
+                    <i class="fa-solid fa-rotate-left text-[9px]"></i>
+                    <span>Batalkan Trailing</span>
+                  </button>
+                </div>
               `}
 
               ${ts.bepPrice > (t.stopLoss || 0) && ts.bepPrice !== ts.suggestedPrice ? `
                 <button onclick="applyTrailingStop('${t.id}', ${ts.bepPrice})" class="py-1.5 px-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 font-medium text-[11px] transition flex items-center justify-center gap-1">
                   <i class="fa-solid fa-shield text-gray-400 text-[10px]"></i>
-                  <span>BEP Rp ${formatIDR(ts.bepPrice)}</span>
+                  <span>BEP ${formatIDR(ts.bepPrice)}</span>
                 </button>
               ` : ''}
             </div>
@@ -4469,6 +4527,9 @@ function handleTradeEntrySubmit(event) {
       trades[idx].entryPrice = entryPrice;
       trades[idx].lots = lots;
       trades[idx].stopLoss = stopLoss;
+      if (!trades[idx].initialStopLoss || (stopLoss && stopLoss <= entryPrice)) {
+        trades[idx].initialStopLoss = stopLoss;
+      }
       trades[idx].tp1 = tp1;
       trades[idx].tp2 = tp2;
       trades[idx].notes = notes;
@@ -4492,6 +4553,7 @@ function handleTradeEntrySubmit(event) {
       entryPrice,
       lots,
       stopLoss,
+      initialStopLoss: stopLoss || roundToIDXTick(entryPrice * 0.94),
       tp1,
       tp2,
       notes,
