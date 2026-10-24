@@ -630,6 +630,28 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #fcd34d !important;
 }
 
+/* Market Health Barometer Light Mode Styling */
+.light-theme #marketHealthSection {
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.light-theme #marketHealthSection .bg-\[\#0e1117\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme #marketHealthModal .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme #marketHealthModal .bg-\[\#0e1117\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+
 
 
 

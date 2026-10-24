@@ -49,6 +49,7 @@ from screener.history_db import (
     generate_excel_export
 )
 from screener.broker_summary import calculate_broker_summary
+from screener.market_health import calculate_market_health
 
 app = FastAPI(
     title="Syariah Swing Radar Pro API",
@@ -386,7 +387,30 @@ def get_screening_results(
     except Exception as e:
         print(f"[HISTORY DB] Auto-save error: {e}")
 
-    return {"market_date": market_date_str, "summary": summary, "candidates": filtered, "all_stocks": all_stocks}
+    market_health = calculate_market_health(market_data, all_stocks, all_candidates, force_refresh=force_refresh)
+
+    return {
+        "market_date": market_date_str,
+        "summary": summary,
+        "market_health": market_health,
+        "candidates": filtered,
+        "all_stocks": all_stocks
+    }
+
+
+@app.get("/api/market-health")
+def get_market_health_endpoint(force_refresh: bool = False, user: str = Depends(require_auth)):
+    market_data = fetch_all_sharia_data(force_refresh=force_refresh)
+    if not market_data:
+        raise HTTPException(status_code=500, detail="Gagal mengambil data pasar.")
+    diagnostics = run_screener_diagnostics(market_data)
+    health = calculate_market_health(
+        market_data,
+        diagnostics["all_stocks"],
+        diagnostics["candidates"],
+        force_refresh=force_refresh
+    )
+    return {"status": "ok", "market_health": health}
 
 
 # -------------------------------------------------------------

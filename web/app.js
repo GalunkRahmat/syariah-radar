@@ -720,6 +720,171 @@ function copyWAModalText() {
   }
 }
 
+// -------------------------------------------------------------
+// BAROMETER KESEHATAN PASAR (IHSG & SYARIAH TRAFFIC LIGHT)
+// -------------------------------------------------------------
+let currentMarketHealth = null;
+
+function renderMarketHealth(health) {
+  if (!health) return;
+  currentMarketHealth = health;
+
+  const section = document.getElementById('marketHealthSection');
+  if (!section) return;
+
+  const regime = health.regime || 'NEUTRAL';
+  const score = health.score || 50;
+  const color = health.color || 'amber'; // 'emerald', 'amber', 'rose'
+
+  // Dynamic container styling based on regime
+  section.className = `border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-300 ${
+    color === 'emerald'
+      ? 'bg-[#161b22] border-emerald-500/40 shadow-emerald-950/20'
+      : color === 'amber'
+      ? 'bg-[#161b22] border-amber-500/40 shadow-amber-950/20'
+      : 'bg-[#161b22] border-rose-500/40 shadow-rose-950/20'
+  }`;
+
+  // Icon box
+  const iconBox = document.getElementById('mhRegimeIconBox');
+  if (iconBox) {
+    iconBox.className = `w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border text-2xl transition-all duration-300 ${
+      color === 'emerald'
+        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+        : color === 'amber'
+        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+    }`;
+  }
+
+  const emojiEl = document.getElementById('mhRegimeEmoji');
+  if (emojiEl) {
+    emojiEl.textContent = color === 'emerald' ? '🟢' : color === 'amber' ? '🟡' : '🔴';
+  }
+
+  // Badge & Score
+  const badgeEl = document.getElementById('mhRegimeBadge');
+  if (badgeEl) {
+    badgeEl.textContent = health.badge || regime;
+    badgeEl.className = `text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
+      color === 'emerald'
+        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+        : color === 'amber'
+        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+    }`;
+  }
+
+  const scoreBadge = document.getElementById('mhScoreBadge');
+  if (scoreBadge) {
+    scoreBadge.textContent = `Skor: ${score}/100`;
+    scoreBadge.className = `text-xs font-bold ${
+      color === 'emerald' ? 'text-emerald-400' : color === 'amber' ? 'text-amber-400' : 'text-rose-400'
+    }`;
+  }
+
+  // Action Title & Guidance
+  const actionTitle = document.getElementById('mhActionTitle');
+  if (actionTitle) {
+    actionTitle.textContent = health.action_title || health.label || 'Kondisi Pasar';
+  }
+
+  const guidanceText = document.getElementById('mhGuidanceText');
+  if (guidanceText) {
+    guidanceText.textContent = health.guidance || '';
+  }
+
+  // IHSG Ticker & Change
+  const ihsgClose = document.getElementById('mhIHSGClose');
+  const ihsgChg = document.getElementById('mhIHSGChg');
+  if (health.ihsg) {
+    if (ihsgClose) {
+      ihsgClose.textContent = health.ihsg.close ? health.ihsg.close_fmt : '-';
+    }
+    if (ihsgChg) {
+      const chg = health.ihsg.change_pct;
+      const chgSign = chg > 0 ? '+' : '';
+      const chgColor = chg > 0 ? 'text-emerald-400' : chg < 0 ? 'text-rose-400' : 'text-gray-400';
+      ihsgChg.className = `text-[10.5px] font-bold block ${chgColor}`;
+      ihsgChg.textContent = `${chgSign}${chg}%`;
+    }
+  }
+
+  // Breadth Syariah MA50
+  const syariahMA50Pct = document.getElementById('mhSyariahMA50Pct');
+  const syariahMA50Count = document.getElementById('mhSyariahMA50Count');
+  if (health.breadth) {
+    if (syariahMA50Pct) {
+      syariahMA50Pct.textContent = `${health.breadth.above_ma50_pct}%`;
+      syariahMA50Pct.className = `text-sm font-black font-mono block ${
+        health.breadth.above_ma50_pct >= 50 ? 'text-emerald-400' : health.breadth.above_ma50_pct >= 30 ? 'text-amber-400' : 'text-rose-400'
+      }`;
+    }
+    if (syariahMA50Count) {
+      syariahMA50Count.textContent = `${health.breadth.above_ma50_count}/${health.breadth.total_stocks} saham`;
+    }
+  }
+
+  // Cash / Allocation Pill
+  const cashPct = document.getElementById('mhCashPct');
+  const capPct = document.getElementById('mhCapPct');
+  if (cashPct) {
+    cashPct.textContent = `${health.cash_pct}% Cash`;
+    cashPct.className = `text-sm font-black font-mono block ${
+      color === 'emerald' ? 'text-emerald-400' : color === 'amber' ? 'text-amber-400' : 'text-rose-400'
+    }`;
+  }
+  if (capPct) {
+    capPct.textContent = `Maks Modal ${health.allocation_pct}%`;
+  }
+
+  // Progress Bar
+  const scoreBar = document.getElementById('mhScoreBar');
+  if (scoreBar) {
+    scoreBar.style.width = `${Math.min(Math.max(score, 5), 100)}%`;
+    scoreBar.className = `h-full rounded-full transition-all duration-500 ${
+      color === 'emerald' ? 'bg-emerald-500' : color === 'amber' ? 'bg-amber-500' : 'bg-rose-500'
+    }`;
+  }
+
+  const statusPill = document.getElementById('mhStatusPill');
+  if (statusPill) {
+    statusPill.textContent = health.label || regime;
+    statusPill.className = `shrink-0 font-mono font-bold text-xs ${
+      color === 'emerald' ? 'text-emerald-400' : color === 'amber' ? 'text-amber-400' : 'text-rose-400'
+    }`;
+  }
+}
+
+function openMarketHealthModal() {
+  const modal = document.getElementById('marketHealthModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+
+  if (currentMarketHealth) {
+    const mh = currentMarketHealth;
+    const modalRegimeBadge = document.getElementById('mhModalCurrentRegime');
+    if (modalRegimeBadge) {
+      modalRegimeBadge.textContent = `${mh.badge} (Skor ${mh.score}/100)`;
+      modalRegimeBadge.className = `text-xs font-black uppercase px-2.5 py-1 rounded-lg border inline-block mt-1 ${
+        mh.color === 'emerald'
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+          : mh.color === 'amber'
+          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+      }`;
+    }
+  }
+}
+
+function closeMarketHealthModal() {
+  const modal = document.getElementById('marketHealthModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+
 function shareStockSignal(code) {
   const upper = (code || '').trim().toUpperCase();
   const stock = currentCandidates.find(c => (c.code || '').trim().toUpperCase() === upper) ||
@@ -1060,6 +1225,10 @@ async function handleHistoryDateChange(date) {
       const accumCount = currentCandidates.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION')).length;
       document.getElementById('statAccumulation').innerText = accumCount;
 
+      if (data.market_health) {
+        renderMarketHealth(data.market_health);
+      }
+
       populateCalculatorDropdown();
       populateBroksumStockDropdown();
       renderCandidates();
@@ -1182,6 +1351,11 @@ async function fetchResults(forceRefresh = false) {
     const foreignCount = currentCandidates.filter(c => c.foreign_flow && c.foreign_flow.is_accum).length;
     const foreignEl = document.getElementById('foreignFlowCount');
     if (foreignEl) foreignEl.innerText = foreignCount;
+
+    // Update Market Health Traffic Light Barometer
+    if (data.market_health) {
+      renderMarketHealth(data.market_health);
+    }
 
     updateWatchlistCounter();
     updateJournalBadges();
