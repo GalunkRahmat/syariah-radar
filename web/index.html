@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.2.1">
+  <link rel="stylesheet" href="/static/style.css?v=2.3.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -1895,6 +1895,73 @@
           </div>
         </div>
 
+        <!-- ============================================================= -->
+        <!-- PORTOFOLIO RISK & SECTOR HEAT CHECK (DETEKTOR OVER-KONSENTRASI)-->
+        <!-- ============================================================= -->
+        <div id="portfolioRiskSection" class="bg-[#0e1117] border border-gray-800 rounded-2xl p-3.5 space-y-3 transition-all duration-300">
+          
+          <!-- TOP ROW: TOTAL RISK EXPOSURE & HEALTH BADGE -->
+          <div class="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-2.5">
+              <div id="riskHealthIconBox" class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>Proteksi Risiko & Konsentrasi Sektor</span>
+                  </h4>
+                  <span id="riskHealthBadge" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    🟢 Risiko Terjaga Aman
+                  </span>
+                </div>
+                <p id="riskHealthSummary" class="text-[10.5px] text-gray-400 leading-tight">
+                  Total Risiko Portofolio: <span id="riskTotalNominal" class="font-mono font-bold text-emerald-400">Rp 0</span> (<span id="riskTotalPct" class="font-mono font-bold text-emerald-400">0.0%</span> dari modal jika seluruh SL tersentuh).
+                </p>
+              </div>
+            </div>
+
+            <!-- RISK BAROMETER PILL -->
+            <div class="text-right bg-[#161b22] px-3 py-1.5 rounded-xl border border-gray-800 shrink-0">
+              <span class="text-[9px] text-gray-400 block uppercase font-medium">Batas Toleransi</span>
+              <span id="riskWorstCaseBadge" class="text-xs font-mono font-extrabold text-emerald-400 block">Maks -2.0%</span>
+            </div>
+          </div>
+
+          <!-- SECTOR CONCENTRATION ALERT BOX (SHOWN WHEN OVER-CONCENTRATION DETECTED) -->
+          <div id="sectorAlertBox" class="hidden p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-amber-400 text-xs">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span id="sectorAlertTitle">⚠️ Peringatan Konsentrasi Sektor Terdeteksi!</span>
+            </div>
+            <p id="sectorAlertMessage" class="text-[11px] text-gray-300 leading-relaxed">
+              Sebagian besar modal Anda terkonsentrasi pada satu sektor. Jika terjadi guncangan sektoral, portofolio Anda rentan terhadap kejatuhan massal.
+            </p>
+          </div>
+
+          <!-- SECTOR ALLOCATION BREAKDOWN BAR -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between text-[10.5px]">
+              <span class="text-gray-400 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-chart-pie text-emerald-400 text-[10px]"></i>
+                <span>Distribusi Sektor Modal Aktif:</span>
+              </span>
+              <span id="sectorCountText" class="text-gray-400 font-mono text-[10px]">0 Sektor Aktif</span>
+            </div>
+
+            <!-- MULTI-COLOR PROGRESS BAR -->
+            <div id="sectorProgressBar" class="w-full bg-[#161b22] h-2.5 rounded-full overflow-hidden flex border border-gray-800">
+              <div class="h-full bg-gray-700 w-full"></div>
+            </div>
+
+            <!-- SECTOR PILLS LEGEND -->
+            <div id="sectorLegendContainer" class="flex items-center flex-wrap gap-1.5 pt-0.5 text-[10px]">
+              <span class="text-gray-500 text-[10.5px]">Belum ada posisi terbuka.</span>
+            </div>
+          </div>
+
+        </div>
+
         <!-- FILTER TABS -->
         <div class="flex items-center justify-between gap-2 border-b border-gray-800 pb-2.5 overflow-x-auto">
           <div class="flex items-center gap-1.5 shrink-0">
@@ -2526,6 +2593,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.2.1"></script>
+  <script src="/static/app.js?v=2.3.0"></script>
 </body>
 </html>

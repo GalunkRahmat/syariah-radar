@@ -3982,6 +3982,207 @@ function soMoveSLOnly() {
   closeScalingOutModal();
 }
 
+// =============================================================
+// PORTOFOLIO RISK & SECTOR HEAT CHECK (DETEKTOR OVER-KONSENTRASI)
+// =============================================================
+const SECTOR_STYLE_MAP = {
+  'Energy': { bg: '#f59e0b', text: '#d97706', label: 'Energy' },
+  'Basic Materials': { bg: '#6366f1', text: '#4f46e5', label: 'Basic Materials' },
+  'Consumer Non-Cyclicals': { bg: '#10b981', text: '#059669', label: 'Consumer Non-Cyclical' },
+  'Consumer Non-Cyclical': { bg: '#10b981', text: '#059669', label: 'Consumer Non-Cyclical' },
+  'Consumer Cyclicals': { bg: '#06b6d4', text: '#0891b2', label: 'Consumer Cyclical' },
+  'Consumer Cyclical': { bg: '#06b6d4', text: '#0891b2', label: 'Consumer Cyclical' },
+  'Financials': { bg: '#3b82f6', text: '#2563eb', label: 'Financials' },
+  'Healthcare': { bg: '#f43f5e', text: '#e11d48', label: 'Healthcare' },
+  'Industrials': { bg: '#a855f7', text: '#9333ea', label: 'Industrials' },
+  'Infrastructures': { bg: '#14b8a6', text: '#0d9488', label: 'Infrastructures' },
+  'Infrastructure': { bg: '#14b8a6', text: '#0d9488', label: 'Infrastructure' },
+  'Technology': { bg: '#ec4899', text: '#db2777', label: 'Technology' },
+  'Properties & Real Estate': { bg: '#84cc16', text: '#65a30d', label: 'Properties' },
+  'Property': { bg: '#84cc16', text: '#65a30d', label: 'Properties' },
+  'Transportation & Logistics': { bg: '#0ea5e9', text: '#0284c7', label: 'Transportation' },
+  'General': { bg: '#64748b', text: '#475569', label: 'Umum' }
+};
+
+function getSectorStyle(sectorName) {
+  return SECTOR_STYLE_MAP[sectorName] || { bg: '#64748b', text: '#475569', label: sectorName || 'General' };
+}
+
+function getStockSector(code) {
+  if (!code) return 'General';
+  const upper = code.trim().toUpperCase();
+  const c = (currentCandidates || []).find(item => (item.code || '').toUpperCase() === upper);
+  if (c && c.sector) return c.sector;
+  const s = (allTrackedStocks || []).find(item => (item.code || '').toUpperCase() === upper);
+  if (s && s.sector) return s.sector;
+  return 'General';
+}
+
+function renderPortfolioRiskAndSectors(trades) {
+  const section = document.getElementById('portfolioRiskSection');
+  if (!section) return;
+
+  const openTrades = (trades || []).filter(t => t.status === 'OPEN');
+  
+  let totalActiveCapital = 0;
+  let totalRiskIDR = 0;
+  const sectorCapital = {};
+  const sectorTrades = {};
+
+  openTrades.forEach(t => {
+    const shares = (Number(t.lots) || 1) * 100;
+    const entry = Number(t.entryPrice) || 0;
+    const sl = Number(t.stopLoss) || 0;
+    const cap = entry * shares;
+    totalActiveCapital += cap;
+
+    // Calculate real risk (if SL < entry). If trailing stop is active above entry, nominal risk is 0!
+    if (sl > 0 && sl < entry) {
+      totalRiskIDR += (entry - sl) * shares;
+    }
+
+    const sec = t.sector || getStockSector(t.code);
+    sectorCapital[sec] = (sectorCapital[sec] || 0) + cap;
+    if (!sectorTrades[sec]) sectorTrades[sec] = [];
+    sectorTrades[sec].push(t.code);
+  });
+
+  const userCapital = Number(localStorage.getItem('user_trading_capital')) || 50000000;
+  const basisCapital = Math.max(userCapital, totalActiveCapital);
+  const riskPct = basisCapital > 0 ? ((totalRiskIDR / basisCapital) * 100) : 0;
+
+  // 1. Update Total Risk UI
+  const riskNominalEl = document.getElementById('riskTotalNominal');
+  const riskPctEl = document.getElementById('riskTotalPct');
+  const riskBadgeEl = document.getElementById('riskHealthBadge');
+  const riskIconBox = document.getElementById('riskHealthIconBox');
+  const riskSummaryEl = document.getElementById('riskHealthSummary');
+  const riskWorstCaseBadge = document.getElementById('riskWorstCaseBadge');
+
+  if (riskNominalEl) riskNominalEl.innerText = formatIDR(totalRiskIDR);
+  if (riskPctEl) riskPctEl.innerText = `${riskPct.toFixed(1)}%`;
+  if (riskWorstCaseBadge) riskWorstCaseBadge.innerText = `Total Risk: ${riskPct.toFixed(1)}%`;
+
+  if (openTrades.length === 0) {
+    if (riskBadgeEl) {
+      riskBadgeEl.innerText = '🟢 Bebas Risiko (100% Cash)';
+      riskBadgeEl.className = 'text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    }
+    if (riskIconBox) {
+      riskIconBox.className = 'w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0';
+    }
+    if (riskSummaryEl) {
+      riskSummaryEl.innerHTML = 'Portofolio dalam posisi kas penuh (100% Cash). Tidak ada modal yang terpapar risiko pasar.';
+    }
+  } else if (riskPct <= 2.0) {
+    if (riskBadgeEl) {
+      riskBadgeEl.innerText = '🟢 Risiko Sangat Aman';
+      riskBadgeEl.className = 'text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    }
+    if (riskIconBox) {
+      riskIconBox.className = 'w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0';
+    }
+    if (riskSummaryEl) {
+      riskSummaryEl.innerHTML = `Total Risiko Terkunci: <span class="font-mono font-bold text-emerald-400">${formatIDR(totalRiskIDR)}</span> (<span class="font-mono font-bold text-emerald-400">${riskPct.toFixed(1)}%</span> modal). Bahkan jika seluruh Stop Loss tersentuh bersamaan, portofolio Anda terlindungi maksimal.`;
+    }
+  } else if (riskPct <= 4.0) {
+    if (riskBadgeEl) {
+      riskBadgeEl.innerText = '🟡 Risiko Wajar (Moderat)';
+      riskBadgeEl.className = 'text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    }
+    if (riskIconBox) {
+      riskIconBox.className = 'w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0';
+    }
+    if (riskSummaryEl) {
+      riskSummaryEl.innerHTML = `Total Risiko Terkunci: <span class="font-mono font-bold text-amber-400">${formatIDR(totalRiskIDR)}</span> (<span class="font-mono font-bold text-amber-400">${riskPct.toFixed(1)}%</span> modal). Risiko dalam batas toleransi wajar swing trading. Pertimbangkan aktifkan Trailing Stop pada posisi yang sudah profit.`;
+    }
+  } else {
+    if (riskBadgeEl) {
+      riskBadgeEl.innerText = '🔴 Risiko Tinggi (Over-Exposed)';
+      riskBadgeEl.className = 'text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30';
+    }
+    if (riskIconBox) {
+      riskIconBox.className = 'w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 shrink-0';
+    }
+    if (riskSummaryEl) {
+      riskSummaryEl.innerHTML = `⚠️ Peringatan: Total Risiko Terkunci <span class="font-mono font-bold text-rose-400">${formatIDR(totalRiskIDR)}</span> (<span class="font-mono font-bold text-rose-400">${riskPct.toFixed(1)}%</span> modal). Melebihi batas aman maksimal portofolio (2-3%). Disarankan perketat Stop Loss atau scaling out.`;
+    }
+  }
+
+  // 2. Sector Over-Concentration Alert
+  const sectorAlertBox = document.getElementById('sectorAlertBox');
+  const sectorAlertTitle = document.getElementById('sectorAlertTitle');
+  const sectorAlertMessage = document.getElementById('sectorAlertMessage');
+
+  const sortedSectors = Object.entries(sectorCapital).sort((a, b) => b[1] - a[1]);
+
+  if (sortedSectors.length > 0 && totalActiveCapital > 0) {
+    const [topSecName, topSecCap] = sortedSectors[0];
+    const topSecPct = (topSecCap / totalActiveCapital) * 100;
+    const stockListStr = (sectorTrades[topSecName] || []).join(', ');
+
+    if (topSecPct >= 50 && openTrades.length >= 2) {
+      if (sectorAlertBox) sectorAlertBox.classList.remove('hidden');
+      if (sectorAlertTitle) sectorAlertTitle.innerText = `⚠️ Peringatan Over-Konsentrasi (${topSecPct.toFixed(0)}% Modal di Sektor ${topSecName})!`;
+      if (sectorAlertMessage) {
+        sectorAlertMessage.innerHTML = `
+          Sebanyak <strong>${topSecPct.toFixed(0)}% modal aktif</strong> (${formatIDR(topSecCap)}) tertumpuk pada <strong>Sektor ${topSecName}</strong> (${stockListStr}). 
+          Jika terjadi koreksi atau sentimen negatif pada sektor ini, seluruh posisi Anda berisiko jatuh bersamaan. Disarankan mendiversifikasi pembelian berikutnya ke sektor lain untuk menjaga keamanan portofolio.
+        `;
+      }
+    } else if (topSecPct >= 40 && openTrades.length >= 3) {
+      if (sectorAlertBox) sectorAlertBox.classList.remove('hidden');
+      if (sectorAlertTitle) sectorAlertTitle.innerText = `⚡ Perhatian Alokasi Sektor (${topSecPct.toFixed(0)}% di Sektor ${topSecName})`;
+      if (sectorAlertMessage) {
+        sectorAlertMessage.innerHTML = `
+          Porsi <strong>Sektor ${topSecName}</strong> (${stockListStr}) mulai dominan (${topSecPct.toFixed(0)}% modal aktif). Jaga agar alokasi modal pada satu sektor tidak melebihi 50% untuk mencegah risiko kejatuhan masal.
+        `;
+      }
+    } else {
+      if (sectorAlertBox) sectorAlertBox.classList.add('hidden');
+    }
+  } else {
+    if (sectorAlertBox) sectorAlertBox.classList.add('hidden');
+  }
+
+  // 3. Sector Breakdown Bar & Legend
+  const sectorProgressBar = document.getElementById('sectorProgressBar');
+  const sectorLegendContainer = document.getElementById('sectorLegendContainer');
+  const sectorCountText = document.getElementById('sectorCountText');
+
+  if (sortedSectors.length > 0 && totalActiveCapital > 0) {
+    if (sectorCountText) sectorCountText.innerText = `${sortedSectors.length} Sektor Aktif`;
+    
+    // Progress Bar
+    const barHtml = sortedSectors.map(([sec, cap]) => {
+      const pct = ((cap / totalActiveCapital) * 100).toFixed(1);
+      const style = getSectorStyle(sec);
+      return `<div class="h-full transition-all duration-300" style="width: ${pct}%; background-color: ${style.bg};" title="${sec}: ${pct}% (${formatIDR(cap)})"></div>`;
+    }).join('');
+    if (sectorProgressBar) sectorProgressBar.innerHTML = barHtml;
+
+    // Legend
+    const legendHtml = sortedSectors.map(([sec, cap]) => {
+      const pct = ((cap / totalActiveCapital) * 100).toFixed(1);
+      const style = getSectorStyle(sec);
+      const count = (sectorTrades[sec] || []).length;
+      return `
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border font-mono text-[10px]" style="background-color: ${style.bg}15; border-color: ${style.bg}40; color: ${style.bg};">
+          <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: ${style.bg};"></span>
+          <span class="font-sans font-bold">${style.label}:</span>
+          <span class="font-bold">${pct}%</span>
+          <span class="text-gray-400 font-sans">(${count} saham • ${formatIDR(cap)})</span>
+        </span>
+      `;
+    }).join('');
+    if (sectorLegendContainer) sectorLegendContainer.innerHTML = legendHtml;
+  } else {
+    if (sectorCountText) sectorCountText.innerText = '0 Sektor Aktif';
+    if (sectorProgressBar) sectorProgressBar.innerHTML = '<div class="h-full bg-gray-800 w-full"></div>';
+    if (sectorLegendContainer) sectorLegendContainer.innerHTML = '<span class="text-gray-500 text-[10.5px]">Belum ada posisi terbuka.</span>';
+  }
+}
+
 function renderJournalView() {
   const container = document.getElementById('journalTradesList');
   if (!container) return;
@@ -4078,6 +4279,9 @@ function renderJournalView() {
 
   document.getElementById('journalStatWinRate').innerText = `${winRate}%`;
   document.getElementById('journalStatRatio').innerText = rrRatioStr;
+
+  // Update Portfolio Risk & Sector Concentration
+  renderPortfolioRiskAndSectors(trades);
 
   // Update Filter Counters
   const countAll = trades.length;
@@ -4186,6 +4390,7 @@ function renderJournalView() {
           <div class="space-y-0.5">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-base font-extrabold text-white tracking-wide">${t.code}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-800 text-gray-300 border border-gray-700">${t.sector || getStockSector(t.code)}</span>
               ${statusBadge}
               <span class="text-[10px] text-gray-500">• Beli: ${t.entryDate || '-'}</span>
               ${isClosed ? `<span class="text-[10px] text-gray-500">• Jual: ${t.exitDate || '-'}</span>` : ''}

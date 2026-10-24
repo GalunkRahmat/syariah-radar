@@ -661,6 +661,17 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #e2e8f0 !important;
 }
 
+.light-theme #portfolioRiskSection {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme #portfolioRiskSection .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+
 
 
 
