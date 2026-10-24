@@ -681,6 +681,21 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #e2e8f0 !important;
 }
 
+.light-theme #modalForeignFlowBox {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+
+.light-theme .foreign-flow-banner {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+
+.light-theme .foreign-flow-strip {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+
 
 
 

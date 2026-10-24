@@ -231,7 +231,12 @@ def evaluate_ticker(code: str, meta: dict, df: pd.DataFrame, fundamentals_cache:
     top_foreign_brokers = [b["broker_code"] for b in buyers_7d if b.get("category") == "ASING"]
     foreign_brokers_str = ", ".join(top_foreign_brokers[:2]) if top_foreign_brokers else ""
 
-    if is_foreign_accum and foreign_brokers_str:
+    BIG4_FOREIGN = {"AK", "BK", "ZP", "RX"}
+    has_big4_foreign = any(b.get("broker_code") in BIG4_FOREIGN for b in buyers_7d if b.get("category") == "ASING")
+
+    if is_pure_foreign:
+        safety_confirmations.append(f"Foreign Flow: Murni diakumulasi broker Asing Tier-1 ({foreign_brokers_str}) dalam 7 hari")
+    elif is_foreign_accum and foreign_brokers_str:
         safety_confirmations.append(f"Foreign Flow: Akumulasi dominan broker Asing ({foreign_brokers_str}) dalam 7 hari")
 
     return {
@@ -273,6 +278,7 @@ def evaluate_ticker(code: str, meta: dict, df: pd.DataFrame, fundamentals_cache:
         "foreign_flow": {
             "is_accum": bool(is_foreign_accum),
             "is_pure_foreign": bool(is_pure_foreign),
+            "has_big4_foreign": bool(has_big4_foreign),
             "top_foreign_brokers": top_foreign_brokers,
             "foreign_brokers_str": foreign_brokers_str,
             "top1_broker": b1.get("broker_code", "-") if b1 else "-",

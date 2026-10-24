@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.4.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.5.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -426,7 +426,7 @@
       <button onclick="setFilter('LOW_RISK')" id="filter-LOW_RISK" class="filter-pill border-emerald-500/40 text-emerald-400 font-semibold shrink-0">
         🛡️ Grade A+
       </button>
-      <button onclick="setFilter('FOREIGN_FLOW')" id="filter-FOREIGN_FLOW" class="filter-pill border-rose-500/40 text-rose-300 font-semibold flex items-center gap-1.5 shrink-0">
+      <button onclick="setFilter('FOREIGN_FLOW')" id="filter-FOREIGN_FLOW" class="filter-pill border-rose-500/40 text-rose-300 font-semibold flex items-center gap-1.5 shrink-0" title="Saring saham yang murni / dominan diakumulasi broker asing tier-1 (AK, BK, ZP, RX) dalam 7 hari">
         <i class="fa-solid fa-landmark text-rose-400"></i>
         <span>Akumulasi Asing (<span id="foreignFlowCount">0</span>)</span>
       </button>
@@ -1107,6 +1107,23 @@
             <div class="bg-gray-800/40 p-2 rounded-lg">
               <span class="text-[10px] text-gray-400 block">Money Flow (MFI)</span>
               <span id="modalMFI" class="font-bold text-white">-</span>
+            </div>
+          </div>
+          <!-- FOREIGN FLOW 7D STRIP IN MODAL -->
+          <div id="modalForeignFlowBox" class="p-2.5 rounded-xl bg-gradient-to-r from-rose-500/10 via-purple-500/10 to-transparent border border-rose-500/25 flex items-center justify-between text-xs hidden">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold shrink-0">🏛️</span>
+              <div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-rose-300 font-bold text-xs" id="modalFFStatus">Akumulasi Asing 7-Hari</span>
+                  <span id="modalFFTag" class="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Big-4 Asing</span>
+                </div>
+                <p class="text-[10.5px] text-gray-400 font-mono" id="modalFFDetail">Top Buyer: AK, BK • Net Val: Positif</p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-[9.5px] text-gray-400 block">Minim Intervensi Liar</span>
+              <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1 justify-end"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Swing Stabil</span>
             </div>
           </div>
           <button type="button" onclick="closeModal(); if (currentOpenStock) openBrokerSummaryForStock(currentOpenStock.code);" class="w-full mt-2 py-2 px-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center justify-center gap-2 transition">
@@ -2692,6 +2709,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.4.0"></script>
+  <script src="/static/app.js?v=2.5.0"></script>
 </body>
 </html>

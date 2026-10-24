@@ -646,7 +646,9 @@ function generateStockSignalText(stock) {
 
   let foreignText = 'Netral / Domestik Driven';
   if (ff.is_accum) {
-    foreignText = `Akumulasi Asing Net: ${ff.net_val_str || 'Positif'}${ff.foreign_brokers_str ? ' via ' + ff.foreign_brokers_str : ''}`;
+    const isPure = ff.is_pure_foreign ? 'Murni Asing (Top 1 & 2 Asing)' : 'Dominan Asing (7 Hari)';
+    const isBig4 = (ff.has_big4_foreign || (ff.top_foreign_brokers && ff.top_foreign_brokers.some(b => ['AK', 'BK', 'ZP', 'RX'].includes(b)))) ? ' [Big-4 Foreign Tier-1]' : '';
+    foreignText = `🏛️ ${isPure}: ${ff.net_val_str || 'Positif'}${ff.foreign_brokers_str ? ' via ' + ff.foreign_brokers_str : ''}${isBig4}`;
   }
 
   const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1225,6 +1227,12 @@ async function handleHistoryDateChange(date) {
       const accumCount = currentCandidates.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION')).length;
       document.getElementById('statAccumulation').innerText = accumCount;
 
+      const candForeignCount = currentCandidates.filter(c => c.foreign_flow && c.foreign_flow.is_accum).length;
+      const trackedForeignCount = allTrackedStocks.filter(s => s.foreign_flow && s.foreign_flow.is_accum).length;
+      const displayForeignCount = candForeignCount > 0 ? candForeignCount : trackedForeignCount;
+      const foreignEl = document.getElementById('foreignFlowCount');
+      if (foreignEl) foreignEl.innerText = displayForeignCount;
+
       if (data.market_health) {
         renderMarketHealth(data.market_health);
       }
@@ -1348,9 +1356,11 @@ async function fetchResults(forceRefresh = false) {
     const accumCount = currentCandidates.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION')).length;
     document.getElementById('statAccumulation').innerText = accumCount;
 
-    const foreignCount = currentCandidates.filter(c => c.foreign_flow && c.foreign_flow.is_accum).length;
+    const candForeignCount = currentCandidates.filter(c => c.foreign_flow && c.foreign_flow.is_accum).length;
+    const trackedForeignCount = allTrackedStocks.filter(s => s.foreign_flow && s.foreign_flow.is_accum).length;
+    const displayForeignCount = candForeignCount > 0 ? candForeignCount : trackedForeignCount;
     const foreignEl = document.getElementById('foreignFlowCount');
-    if (foreignEl) foreignEl.innerText = foreignCount;
+    if (foreignEl) foreignEl.innerText = displayForeignCount;
 
     // Update Market Health Traffic Light Barometer
     if (data.market_health) {
@@ -1444,6 +1454,13 @@ function renderCandidates() {
     list = list.filter(c => c.risk_level === 'LOW_RISK');
   } else if (currentFilter === 'FOREIGN_FLOW') {
     list = list.filter(c => c.foreign_flow && c.foreign_flow.is_accum);
+    // Sort so Pure Foreign & Big-4 Foreign are at the top
+    list.sort((a, b) => {
+      const aPure = (a.foreign_flow && a.foreign_flow.is_pure_foreign) ? 2 : ((a.foreign_flow && a.foreign_flow.has_big4_foreign) ? 1 : 0);
+      const bPure = (b.foreign_flow && b.foreign_flow.is_pure_foreign) ? 2 : ((b.foreign_flow && b.foreign_flow.has_big4_foreign) ? 1 : 0);
+      if (bPure !== aPure) return bPure - aPure;
+      return (b.score || 0) - (a.score || 0);
+    });
   } else if (currentFilter === 'BIG_ACCUMULATION') {
     list = list.filter(c => c.bandarmologi && (c.bandarmologi.status === 'BIG_ACCUMULATION' || c.bandarmologi.status === 'ACCUMULATION'));
   } else if (currentFilter === 'JII') {
@@ -1488,6 +1505,25 @@ function renderCandidates() {
         `;
         return;
       }
+    } else if (currentFilter === 'FOREIGN_FLOW' && searchKeyword.length === 0) {
+      const nonCandForeign = allTrackedStocks.filter(s => s.foreign_flow && s.foreign_flow.is_accum && !currentCandidates.some(c => c.code === s.code));
+      if (nonCandForeign.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 bg-[#161b22] border border-gray-800 rounded-2xl p-6 text-gray-400 space-y-2">
+            <i class="fa-solid fa-landmark text-4xl mb-2 text-rose-400"></i>
+            <h3 class="text-base font-bold text-gray-200">Belum Ada Sinyal Akumulasi Asing Murni Hari Ini</h3>
+            <p class="text-xs md:text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+              Sistem menyaring ketat saham swing yang murni/dominan diakumulasi oleh broker asing tier-1 (AK, BK, ZP, RX) dalam 7 hari terakhir demi ketenangan trading Anda dari intervensi bandar lokal liar.
+            </p>
+            <div class="pt-2">
+              <button onclick="setFilter('ALL')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs rounded-xl font-bold transition">
+                Lihat Semua Kandidat
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
     }
 
     let matchingTracked = [];
@@ -1499,17 +1535,32 @@ function renderCandidates() {
       );
     } else if (currentFilter === 'WATCHLIST') {
       matchingTracked = allTrackedStocks.filter(s => watchlist.includes(s.code) && !currentCandidates.some(c => c.code === s.code));
+    } else if (currentFilter === 'FOREIGN_FLOW') {
+      matchingTracked = allTrackedStocks.filter(s => s.foreign_flow && s.foreign_flow.is_accum && !currentCandidates.some(c => c.code === s.code));
+      matchingTracked.sort((a, b) => {
+        const aPure = (a.foreign_flow && a.foreign_flow.is_pure_foreign) ? 2 : ((a.foreign_flow && a.foreign_flow.has_big4_foreign) ? 1 : 0);
+        const bPure = (b.foreign_flow && b.foreign_flow.is_pure_foreign) ? 2 : ((b.foreign_flow && b.foreign_flow.has_big4_foreign) ? 1 : 0);
+        if (bPure !== aPure) return bPure - aPure;
+        return (b.score || 0) - (a.score || 0);
+      });
     }
 
     if (matchingTracked.length > 0) {
+      const isForeignFilter = currentFilter === 'FOREIGN_FLOW';
       let diagHtml = `
         <div class="space-y-3.5">
-          <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs md:text-sm text-amber-200">
+          <div class="${isForeignFilter ? 'bg-gradient-to-r from-rose-500/15 via-purple-500/10 to-transparent border border-rose-500/30' : 'bg-amber-500/10 border border-amber-500/30'} rounded-2xl p-4 text-xs md:text-sm ${isForeignFilter ? 'text-rose-200' : 'text-amber-200'}">
             <div class="flex items-start gap-3">
-              <i class="fa-solid fa-shield-halved text-amber-400 text-xl mt-0.5 shrink-0"></i>
+              <i class="fa-solid ${isForeignFilter ? 'fa-landmark text-rose-400' : 'fa-shield-halved text-amber-400'} text-xl mt-0.5 shrink-0"></i>
               <div>
-                <h4 class="font-bold text-amber-300 text-sm md:text-base">Saham Terdaftar di Radar, Namun Belum Lolos Sinyal Beli Hari Ini</h4>
-                <p class="text-gray-300 mt-1 leading-relaxed">Sistem menyaring saham ini demi keamanan modal Anda agar terhindar dari risiko beli di fase turun tajam (*falling knife*) atau downtrend.</p>
+                <h4 class="font-bold ${isForeignFilter ? 'text-rose-300' : 'text-amber-300'} text-sm md:text-base">
+                  ${isForeignFilter ? 'Saham Terdeteksi Akumulasi Asing (7-Hari), Menunggu Trigger Sinyal Beli' : 'Saham Terdaftar di Radar, Namun Belum Lolos Sinyal Beli Hari Ini'}
+                </h4>
+                <p class="text-gray-300 mt-1 leading-relaxed">
+                  ${isForeignFilter 
+                    ? 'Broker asing tier-1 (AK, BK, ZP, RX) terdeteksi melakukan akumulasi dalam 7 hari terakhir pada saham-saham berikut. Namun setup teknikal hari ini masih dalam fase konsolidasi/pullback sehingga belum memicu sinyal beli swing berisiko rendah.'
+                    : 'Sistem menyaring saham ini demi keamanan modal Anda agar terhindar dari risiko beli di fase turun tajam (*falling knife*) atau downtrend.'}
+                </p>
               </div>
             </div>
           </div>
@@ -1603,6 +1654,40 @@ function renderCandidates() {
   }
 
   let html = '';
+
+  if (currentFilter === 'FOREIGN_FLOW') {
+    const pureCount = list.filter(c => c.foreign_flow && c.foreign_flow.is_pure_foreign).length;
+    html += `
+      <div class="foreign-flow-banner p-3.5 md:p-4 rounded-2xl bg-gradient-to-r from-rose-500/15 via-purple-500/10 to-[#161b22] border border-rose-500/30 space-y-2.5 mb-3.5 shadow-sm">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-bold shadow-sm">
+              🏛️
+            </div>
+            <div>
+              <h3 class="text-xs md:text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap">
+                <span>Radar Akumulasi Asing (Foreign Flow 7-Hari)</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">${list.length} Saham Lolos</span>
+                ${pureCount > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">⭐ ${pureCount} Murni Asing</span>` : ''}
+              </h3>
+              <p class="text-[10.5px] text-gray-300">Menyaring saham swing yang murni/dominan diakumulasi broker institusi asing tier-1 dalam 7 hari terakhir.</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+          <div class="p-2 rounded-xl bg-black/30 border border-gray-800/80 flex items-center gap-2 text-gray-300">
+            <span class="text-rose-400 font-bold shrink-0">🏛️ Big 4 Foreign:</span>
+            <span class="text-gray-200 font-mono text-[10.5px]">AK (UBS), BK (JP Morgan), ZP (Maybank), RX (Macquarie)</span>
+          </div>
+          <div class="p-2 rounded-xl bg-black/30 border border-gray-800/80 flex items-center gap-2 text-gray-300">
+            <span class="text-emerald-400 font-bold shrink-0">🛡️ Keunggulan Swing:</span>
+            <span class="text-gray-300 text-[10.5px]">Pergerakan stabil, likuiditas tebal, minim intervensi bandar gorengan lokal liar.</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   list.forEach(c => {
     const isUp = c.change_pct >= 0;
     const changeColor = isUp ? 'text-emerald-400' : 'text-red-400';
@@ -1643,8 +1728,12 @@ function renderCandidates() {
     const ff = c.foreign_flow || {};
     let foreignChip = '';
     if (ff.is_accum) {
+      const isPure = ff.is_pure_foreign;
+      const isBig4 = ff.has_big4_foreign || (ff.top_foreign_brokers && ff.top_foreign_brokers.some(b => ['AK', 'BK', 'ZP', 'RX'].includes(b)));
       const brokerText = ff.foreign_brokers_str ? ` (${ff.foreign_brokers_str})` : '';
-      foreignChip = `<span class="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[11px] md:text-xs font-semibold flex items-center gap-1 shrink-0" title="Top Net Buyer didominasi broker Asing (7 Hari)"><i class="fa-solid fa-landmark text-rose-400"></i><span>Asing${brokerText}</span></span>`;
+      const pureLabel = isPure ? 'Murni Asing' : 'Asing';
+      const big4Badge = isBig4 ? ' ⭐' : '';
+      foreignChip = `<span class="px-2 py-0.5 rounded-md ${isPure ? 'bg-gradient-to-r from-rose-500/20 to-purple-500/20 text-rose-300 border border-rose-500/40 shadow-sm' : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'} text-[11px] md:text-xs font-bold flex items-center gap-1 shrink-0" title="Top Net Buyer didominasi broker Asing tier-1 (AK, BK, ZP, RX) dalam 7 Hari"><i class="fa-solid fa-landmark text-rose-400"></i><span>${pureLabel}${brokerText}${big4Badge}</span></span>`;
     }
 
     // Fundamental Highlights
@@ -1703,6 +1792,32 @@ function renderCandidates() {
             </div>
           </div>
         </div>
+
+        <!-- FOREIGN FLOW 7D STRIP (IF ACCUMULATED BY FOREIGN BROKERS) -->
+        ${ff.is_accum ? `
+          <div class="foreign-flow-strip p-2.5 rounded-2xl bg-gradient-to-r from-rose-950/40 via-[#161b22] to-purple-950/30 border border-rose-500/30 flex items-center justify-between text-xs flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold shrink-0">🏛️</span>
+              <div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-bold text-rose-300 text-xs">
+                    ${ff.is_pure_foreign ? 'Murni Akumulasi Asing (Top 1 & 2 Asing)' : 'Akumulasi Asing 7-Hari'}
+                  </span>
+                  ${(ff.has_big4_foreign || (ff.top_foreign_brokers && ff.top_foreign_brokers.some(b => ['AK', 'BK', 'ZP', 'RX'].includes(b)))) ? `
+                    <span class="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">Big-4 Asing</span>
+                  ` : ''}
+                </div>
+                <p class="text-[10.5px] text-gray-400 font-mono">
+                  Net Buyer: <strong class="text-white">${ff.foreign_brokers_str || ff.top1_broker}</strong> • Net Value: <strong class="text-rose-300">${ff.net_val_str || 'Positif'}</strong>
+                </p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-[9.5px] text-gray-400 block">Minim Intervensi Liar</span>
+              <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1 justify-end"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Swing Stabil</span>
+            </div>
+          </div>
+        ` : ''}
 
         <!-- 3-PILLAR SCORE ROW (STOCKBIT CAPSULES) -->
         <div class="grid grid-cols-4 gap-2 bg-[#0e1117] p-2.5 md:p-3 rounded-2xl border border-gray-800/80 text-center">
@@ -2300,6 +2415,33 @@ function openModal(stock) {
   document.getElementById('modalVWAP').innerText = formatIDR(bandar.vwap_20);
   document.getElementById('modalBuyVol').innerText = `${bandar.buy_volume_pct_5d || 50}%`;
   document.getElementById('modalMFI').innerText = `${stock.mfi || 50} / 100`;
+
+  // Foreign Flow metrics in modal
+  const ff = stock.foreign_flow || {};
+  const ffBox = document.getElementById('modalForeignFlowBox');
+  if (ffBox) {
+    if (ff.is_accum) {
+      ffBox.classList.remove('hidden');
+      const isPure = ff.is_pure_foreign;
+      const isBig4 = ff.has_big4_foreign || (ff.top_foreign_brokers && ff.top_foreign_brokers.some(b => ['AK', 'BK', 'ZP', 'RX'].includes(b)));
+      
+      const statusEl = document.getElementById('modalFFStatus');
+      if (statusEl) statusEl.innerText = isPure ? 'Murni Akumulasi Asing (Top 1 & 2 Asing)' : 'Akumulasi Asing (7 Hari)';
+      
+      const tagEl = document.getElementById('modalFFTag');
+      if (tagEl) {
+        tagEl.innerText = isBig4 ? '⭐ Big-4 Asing (AK/BK/ZP/RX)' : '🏛️ Tier-1 Asing';
+        tagEl.className = isBig4 
+          ? 'text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30'
+          : 'text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+      }
+
+      const detailEl = document.getElementById('modalFFDetail');
+      if (detailEl) detailEl.innerHTML = `Top Buyer: <strong class="text-white">${ff.foreign_brokers_str || ff.top1_broker}</strong> • Net Value: <strong class="text-rose-300">${ff.net_val_str || 'Positif'}</strong>`;
+    } else {
+      ffBox.classList.add('hidden');
+    }
+  }
 
   // Fundamental Syariah metrics
   document.getElementById('modalMarketCap').innerText = fund.market_cap_str || '-';
