@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css?v=2.1.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.2.0">
   <script>
     // Early theme check to prevent flash of wrong mode
     try {
@@ -2164,10 +2164,170 @@
           <span id="exitPnLPct" class="text-xs font-bold text-emerald-400 block">(+0.00%)</span>
         </div>
 
+        <!-- SCALING OUT SUGGESTION -->
+        <div class="flex items-center justify-between p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10.5px] text-amber-300">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-scissors text-amber-400"></i>
+            <span>Dilema tutup semua atau tahan?</span>
+          </span>
+          <button type="button" onclick="const tid = currentExitTradeId; closeTradeExitModal(); openScalingOutModal(tid);" class="underline font-bold text-amber-400 hover:text-amber-300 transition">
+            Jual 50% Saja &rarr;
+          </button>
+        </div>
+
         <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg">
           <i class="fa-solid fa-circle-check"></i>
           <span>Konfirmasi Selesai & Tutup Posisi</span>
         </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL SCALING OUT (REALISASI SEPARUH & AUTO-BEP)             -->
+  <!-- ============================================================= -->
+  <div id="scalingOutModal" class="fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 md:p-4">
+    <div class="bg-[#161b22] border border-gray-700 w-full max-w-md rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-5 space-y-3.5 max-h-[90vh] overflow-y-auto">
+      
+      <!-- HEADER -->
+      <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold">
+            ✂️
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+              <span>Scaling Out (Realisasi Sebagian)</span>
+            </h4>
+            <p id="soModalTickerSub" class="text-[10px] text-gray-400">AKRA • 10 Lot • Beli di Rp 1.390</p>
+          </div>
+        </div>
+        <button onclick="closeScalingOutModal()" class="w-7 h-7 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- PRO-TRADER WISDOM BOX -->
+      <div class="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-emerald-500/10 border border-emerald-500/30 text-[10.5px] text-gray-300 space-y-1">
+        <div class="flex items-center gap-1 font-bold text-emerald-400">
+          <i class="fa-solid fa-lightbulb"></i>
+          <span>Rahasia Tidur Nyenyak Swing Trader:</span>
+        </div>
+        <p class="leading-relaxed">
+          Realisasikan 50% lot di TP1 untuk mengamankan <strong>uang dingin masuk kantong</strong>. Sisa 50% lot dibiarkan lanjut terbang ke TP2 dengan <strong>Stop Loss digeser ke BEP</strong> (Bebas Risiko Rugi!).
+        </p>
+      </div>
+
+      <!-- FORM -->
+      <form id="scalingOutForm" onsubmit="handleScalingOutSubmit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="soTradeId" value="">
+
+        <!-- 1-LOT WARNING (IF APPLICABLE) -->
+        <div id="soSingleLotWarning" class="hidden p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-200 space-y-1.5">
+          <p class="font-bold flex items-center gap-1">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Posisi Saat Ini Hanya 1 Lot</span>
+          </p>
+          <p class="text-gray-300 text-[10px] leading-tight">
+            Di BEI, 1 lot adalah satuan transaksi terkecil. Anda dapat menjual seluruh 1 lot ini di TP1, atau memilih memindahkan Stop Loss ke BEP tanpa menjual.
+          </p>
+          <div class="flex gap-2 pt-1">
+            <button type="button" onclick="soSellSingleLotFull()" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10.5px] transition">
+              Jual 1 Lot di TP1
+            </button>
+            <button type="button" onclick="soMoveSLOnly()" class="flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-[10.5px] border border-gray-700 transition">
+              Geser SL ke BEP (Hold)
+            </button>
+          </div>
+        </div>
+
+        <!-- LOT SELECTION CONTAINER -->
+        <div id="soMultiLotSection" class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-gray-300 font-semibold text-[11px]">Berapa Lot yang Ingin Direalisasikan?</label>
+            <span id="soTotalLotBadge" class="text-[10px] text-gray-400 font-mono">Total: 10 Lot</span>
+          </div>
+
+          <!-- QUICK LOT PRESET BUTTONS -->
+          <div class="grid grid-cols-3 gap-1.5 text-xs font-mono">
+            <button type="button" id="soLotPresetHalf" onclick="selectSOLotPreset('half')" class="p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-left transition">
+              <span class="block text-[10px] text-emerald-400 font-sans font-bold">✂️ 50% (Separuh)</span>
+              <span id="soLotPresetHalfText" class="block font-bold text-emerald-300">5 Lot</span>
+            </button>
+            <button type="button" id="soLotPresetThird" onclick="selectSOLotPreset('third')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-700 border border-gray-700 text-left transition">
+              <span class="block text-[10px] text-gray-400 font-sans font-medium">1/3 Porsi</span>
+              <span id="soLotPresetThirdText" class="block font-bold text-white">3 Lot</span>
+            </button>
+            <button type="button" id="soLotPresetCustom" onclick="selectSOLotPreset('custom')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-700 border border-gray-700 text-left transition">
+              <span class="block text-[10px] text-gray-400 font-sans font-medium">Kustom</span>
+              <span class="block font-bold text-gray-300">Pilih Lot</span>
+            </button>
+          </div>
+
+          <!-- LOT INPUT & REMAINING LOT SUMMARY -->
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-0.5 font-medium">Lot Dijual:</label>
+              <input type="number" id="soLotsInput" required min="1" step="1" oninput="calcScalingOutPreview()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white font-mono font-bold focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-0.5 font-medium">Sisa Lot di-Hold:</label>
+              <div class="w-full bg-[#0e1117] border border-gray-800 rounded-lg px-2.5 py-1.5 text-white font-mono font-bold flex items-center justify-between">
+                <span id="soRemainingLotsText">5 Lot</span>
+                <span class="text-[9px] text-emerald-400 font-sans">Menuju TP2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXIT PRICE & DATE -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="flex items-center justify-between mb-0.5">
+              <label class="text-[10px] text-gray-400 font-medium">Harga Jual (Rp):</label>
+              <button type="button" id="soQuickTP1Btn" onclick="selectSOQuickPrice('tp1')" class="text-[9px] text-emerald-400 underline hover:text-emerald-300">Pakai TP1</button>
+            </div>
+            <input type="number" id="soPriceInput" required min="1" step="1" oninput="calcScalingOutPreview()" class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white font-mono font-bold focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-400 block mb-0.5 font-medium">Tanggal Realisasi:</label>
+            <input type="date" id="soDateInput" required class="w-full bg-[#0e1117] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- AUTO-BEP STOP LOSS STRIP -->
+        <div class="p-2.5 rounded-xl bg-[#0e1117] border border-gray-800 space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-400 flex items-center gap-1 font-medium">
+              <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+              <span>Stop Loss Otomatis Sisa Lot:</span>
+            </span>
+            <span id="soBEPPriceText" class="text-emerald-400 font-mono font-bold">Rp 1.405 (BEP Aman)</span>
+          </div>
+          <p class="text-[10px] text-gray-500 leading-tight">
+            Level BEP dinaikkan +0.8% dari modal beli untuk menutupi fee beli & jual broker. Sisa posisi dijamin 100% bebas risiko!
+          </p>
+        </div>
+
+        <!-- ESTIMATED PNL PREVIEW BOX -->
+        <div id="soPreviewBox" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1">
+          <span class="text-[10px] text-gray-400 block font-medium">Uang Dingin yang Direalisasikan Masuk Kantong:</span>
+          <div class="flex items-baseline justify-center gap-2">
+            <span id="soRealizedPnLAmount" class="text-base font-extrabold font-mono text-emerald-400 block">+Rp 0</span>
+            <span id="soRealizedPnLPct" class="text-xs font-bold text-emerald-400 block">(+0.00%)</span>
+          </div>
+          <p id="soSummarySub" class="text-[10px] text-gray-400">
+            5 Lot terjual • Sisa 5 Lot tetap berjalan menuju TP2 tanpa risiko
+          </p>
+        </div>
+
+        <!-- SUBMIT BUTTON -->
+        <button type="submit" id="soSubmitBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40">
+          <i class="fa-solid fa-scissors"></i>
+          <span>Konfirmasi Realisasi Separuh & Pasang BEP</span>
+        </button>
+
       </form>
 
     </div>
@@ -2360,6 +2520,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.1.0"></script>
+  <script src="/static/app.js?v=2.2.0"></script>
 </body>
 </html>

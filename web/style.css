@@ -651,6 +651,17 @@ body, header, .stock-card, #mobileBottomNav, .filter-pill, input, select, .journ
   border-color: #e2e8f0 !important;
 }
 
+.light-theme #scalingOutModal .bg-\[\#161b22\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme #scalingOutModal .bg-\[\#0e1117\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+
 
 
 

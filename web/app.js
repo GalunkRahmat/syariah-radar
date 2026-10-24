@@ -3703,6 +3703,241 @@ function handleCustomTSSubmit(event) {
   closeCustomTSModal();
 }
 
+// =============================================================
+// SCALING OUT ASSISTANT (JUAL SEPARUH DI TP1 & AUTO-BEP)
+// =============================================================
+let currentSOTrade = null;
+
+function openScalingOutModal(tradeId) {
+  const trades = getJournalTrades();
+  const trade = trades.find(item => item.id === tradeId);
+  if (!trade || trade.status !== 'OPEN') {
+    showToast("Transaksi tidak ditemukan atau posisi sudah ditutup.");
+    return;
+  }
+
+  currentSOTrade = trade;
+  const modal = document.getElementById('scalingOutModal');
+  if (!modal) return;
+
+  const latestPrice = findStockLatestPrice(trade.code) || trade.entryPrice;
+  const currentPrice = latestPrice;
+  const totalLots = Number(trade.lots) || 1;
+
+  document.getElementById('soTradeId').value = trade.id;
+  document.getElementById('soModalTickerSub').innerText = `${trade.code} • ${totalLots} Lot (${(totalLots * 100).toLocaleString('id-ID')} Lbr) • Beli di Rp ${formatIDR(trade.entryPrice)}`;
+  document.getElementById('soTotalLotBadge').innerText = `Total: ${totalLots} Lot`;
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('soDateInput').value = today;
+
+  // Single-lot vs Multi-lot display
+  const singleLotWarning = document.getElementById('soSingleLotWarning');
+  const multiLotSection = document.getElementById('soMultiLotSection');
+  const submitBtn = document.getElementById('soSubmitBtn');
+
+  if (totalLots <= 1) {
+    if (singleLotWarning) singleLotWarning.classList.remove('hidden');
+    if (multiLotSection) multiLotSection.classList.add('hidden');
+    if (submitBtn) submitBtn.classList.add('hidden');
+  } else {
+    if (singleLotWarning) singleLotWarning.classList.add('hidden');
+    if (multiLotSection) multiLotSection.classList.remove('hidden');
+    if (submitBtn) submitBtn.classList.remove('hidden');
+
+    // Default 50%
+    const halfLots = Math.max(1, Math.floor(totalLots / 2));
+    const thirdLots = Math.max(1, Math.floor(totalLots / 3));
+
+    const halfEl = document.getElementById('soLotPresetHalfText');
+    if (halfEl) halfEl.innerText = `${halfLots} Lot`;
+    const thirdEl = document.getElementById('soLotPresetThirdText');
+    if (thirdEl) thirdEl.innerText = `${thirdLots} Lot`;
+
+    const lotsInput = document.getElementById('soLotsInput');
+    if (lotsInput) {
+      lotsInput.max = totalLots - 1;
+      lotsInput.value = halfLots;
+    }
+  }
+
+  // Price default: TP1 if current price is around/above TP1, else latest price
+  const defaultPrice = (trade.tp1 && currentPrice >= trade.tp1 * 0.98) ? trade.tp1 : currentPrice;
+  document.getElementById('soPriceInput').value = defaultPrice;
+
+  // Update TP1 quick button label
+  const tp1Btn = document.getElementById('soQuickTP1Btn');
+  if (tp1Btn) {
+    tp1Btn.innerText = trade.tp1 ? `Pakai TP1 (Rp ${formatIDR(trade.tp1)})` : 'Pakai Harga Pasar';
+  }
+
+  // BEP preview
+  const bepPrice = roundToIDXTick(trade.entryPrice * 1.008);
+  const bepEl = document.getElementById('soBEPPriceText');
+  if (bepEl) {
+    bepEl.innerText = `Rp ${formatIDR(bepPrice)} (BEP Aman)`;
+  }
+
+  calcScalingOutPreview();
+  modal.classList.remove('hidden');
+}
+
+function closeScalingOutModal() {
+  const modal = document.getElementById('scalingOutModal');
+  if (modal) modal.classList.add('hidden');
+  currentSOTrade = null;
+}
+
+function selectSOLotPreset(type) {
+  if (!currentSOTrade) return;
+  const totalLots = Number(currentSOTrade.lots) || 1;
+  const input = document.getElementById('soLotsInput');
+  if (!input) return;
+
+  if (type === 'half') {
+    input.value = Math.max(1, Math.floor(totalLots / 2));
+  } else if (type === 'third') {
+    input.value = Math.max(1, Math.floor(totalLots / 3));
+  } else {
+    input.focus();
+    input.select();
+  }
+  calcScalingOutPreview();
+}
+
+function selectSOQuickPrice(type) {
+  if (!currentSOTrade) return;
+  const input = document.getElementById('soPriceInput');
+  if (!input) return;
+
+  if (type === 'tp1' && currentSOTrade.tp1) {
+    input.value = currentSOTrade.tp1;
+  } else {
+    const latestPrice = findStockLatestPrice(currentSOTrade.code) || currentSOTrade.entryPrice;
+    input.value = latestPrice;
+  }
+  calcScalingOutPreview();
+}
+
+function calcScalingOutPreview() {
+  if (!currentSOTrade) return;
+  const t = currentSOTrade;
+  const totalLots = Number(t.lots) || 1;
+  let lotsToSell = Number(document.getElementById('soLotsInput').value) || 0;
+  
+  if (lotsToSell >= totalLots) {
+    lotsToSell = totalLots - 1;
+    if (lotsToSell < 1) lotsToSell = 1;
+    document.getElementById('soLotsInput').value = lotsToSell;
+  }
+
+  const remainingLots = Math.max(0, totalLots - lotsToSell);
+  const remEl = document.getElementById('soRemainingLotsText');
+  if (remEl) remEl.innerText = `${remainingLots} Lot`;
+
+  const exitPrice = Number(document.getElementById('soPriceInput').value) || t.entryPrice;
+  const soldShares = lotsToSell * 100;
+  const realizedPnl = (exitPrice - t.entryPrice) * soldShares;
+  const realizedPnlPct = t.entryPrice > 0 ? ((exitPrice - t.entryPrice) / t.entryPrice) * 100 : 0;
+
+  const amountEl = document.getElementById('soRealizedPnLAmount');
+  const pctEl = document.getElementById('soRealizedPnLPct');
+  const subEl = document.getElementById('soSummarySub');
+
+  const sign = realizedPnl >= 0 ? '+' : '';
+  if (amountEl) {
+    amountEl.innerText = `${sign}Rp ${formatIDR(realizedPnl)}`;
+    amountEl.className = `text-base font-extrabold font-mono ${realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'} block`;
+  }
+  if (pctEl) {
+    pctEl.innerText = `(${sign}${realizedPnlPct.toFixed(2)}%)`;
+    pctEl.className = `text-xs font-bold ${realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'} block`;
+  }
+  if (subEl) {
+    subEl.innerText = `${lotsToSell} Lot terjual • Sisa ${remainingLots} Lot tetap berjalan menuju TP2 tanpa risiko`;
+  }
+}
+
+function handleScalingOutSubmit(event) {
+  event.preventDefault();
+  if (!currentSOTrade) return;
+
+  const trades = getJournalTrades();
+  const idx = trades.findIndex(item => item.id === currentSOTrade.id);
+  if (idx === -1) return;
+
+  const t = trades[idx];
+  const totalLots = Number(t.lots) || 1;
+  const lotsToSell = Number(document.getElementById('soLotsInput').value);
+  const exitPrice = Number(document.getElementById('soPriceInput').value);
+  const exitDate = document.getElementById('soDateInput').value || new Date().toISOString().split('T')[0];
+
+  if (!lotsToSell || lotsToSell <= 0 || lotsToSell >= totalLots) {
+    showToast(`⚠️ Masukkan jumlah lot yang valid (antara 1 dan ${totalLots - 1} lot).`);
+    return;
+  }
+  if (!exitPrice || exitPrice <= 0) {
+    showToast("⚠️ Masukkan harga jual yang valid.");
+    return;
+  }
+
+  const soldShares = lotsToSell * 100;
+  const realizedPnl = (exitPrice - t.entryPrice) * soldShares;
+  const realizedPnlPct = ((exitPrice - t.entryPrice) / t.entryPrice) * 100;
+
+  // 1. Create a realized CLOSED trade for the sold tranche
+  const realizedTranche = {
+    id: 'trade_' + Date.now() + '_so',
+    code: t.code,
+    name: t.name,
+    entryDate: t.entryDate,
+    entryPrice: t.entryPrice,
+    exitDate: exitDate,
+    exitPrice: exitPrice,
+    lots: lotsToSell,
+    stopLoss: t.stopLoss,
+    tp1: t.tp1,
+    tp2: t.tp2,
+    status: (realizedPnl >= 0) ? 'WIN' : 'LOSS',
+    realizedPnl: realizedPnl,
+    realizedPnlPct: realizedPnlPct,
+    closedAt: Date.now(),
+    notes: (t.notes ? t.notes + ' • ' : '') + `[✂️ Realisasi Scaling Out ${lotsToSell} Lot di TP1/Rp ${formatIDR(exitPrice)}]`,
+    isScalingOutTranche: true,
+    parentTradeId: t.id
+  };
+
+  // 2. Adjust remaining OPEN trade
+  const remainingLots = totalLots - lotsToSell;
+  t.lots = remainingLots;
+  const bepPrice = roundToIDXTick(t.entryPrice * 1.008);
+  t.stopLoss = Math.max(Number(t.stopLoss) || 0, bepPrice);
+  t.scalingOutDone = true;
+  t.scaledLots = (t.scaledLots || 0) + lotsToSell;
+  t.notes = (t.notes ? t.notes + ' • ' : '') + `[✂️ Sisa ${remainingLots} Lot (SL di BEP Rp ${formatIDR(t.stopLoss)})]`;
+
+  trades.push(realizedTranche);
+  saveJournalTrades(trades, true);
+  closeScalingOutModal();
+  renderJournalView();
+
+  showToast(`✂️ Sukses Realisasi Separuh! Cuan +Rp ${formatIDR(realizedPnl)} (+${realizedPnlPct.toFixed(1)}%) masuk kantong. Sisa ${remainingLots} Lot dijamin bebas risiko (SL di BEP Rp ${formatIDR(t.stopLoss)})!`);
+}
+
+function soSellSingleLotFull() {
+  if (!currentSOTrade) return;
+  const tradeId = currentSOTrade.id;
+  closeScalingOutModal();
+  openTradeExitModal(tradeId);
+}
+
+function soMoveSLOnly() {
+  if (!currentSOTrade) return;
+  const bepPrice = roundToIDXTick(currentSOTrade.entryPrice * 1.008);
+  applyTrailingStop(currentSOTrade.id, bepPrice);
+  closeScalingOutModal();
+}
+
 function renderJournalView() {
   const container = document.getElementById('journalTradesList');
   if (!container) return;
@@ -3879,6 +4114,9 @@ function renderJournalView() {
       if (isTrailingActive) {
         statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-lock text-emerald-400"></i> Terkunci Cuan</span>`;
       }
+      if (t.scalingOutDone) {
+        statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1"><i class="fa-solid fa-scissors text-amber-400"></i> Scaled Out (${t.scaledLots || ''} Lot Dijual)</span>`;
+      }
     } else {
       pnlAmount = Number(t.realizedPnl || 0);
       pnlPct = Number(t.realizedPnlPct || 0);
@@ -3886,6 +4124,9 @@ function renderJournalView() {
         statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-400"></i> SELESAI: WIN (+${pnlPct.toFixed(1)}%)</span>`;
       } else {
         statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1"><i class="fa-solid fa-shield-xmark text-red-400"></i> SELESAI: CUT LOSS (${pnlPct.toFixed(1)}%)</span>`;
+      }
+      if (t.isScalingOutTranche) {
+        statusBadge += ` <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-scissors text-blue-400"></i> Realisasi Sebagian</span>`;
       }
     }
 
@@ -4008,6 +4249,16 @@ function renderJournalView() {
                 </button>
               ` : ''}
             </div>
+
+            <!-- SCALING OUT SHORTCUT IN TS CARD -->
+            ${(t.tp1 && currentPrice >= t.tp1 * 0.98) || (ts && ts.gainPct >= 5.0) ? `
+              <div class="pt-1.5 border-t border-emerald-500/20">
+                <button onclick="openScalingOutModal('${t.id}')" class="w-full py-1.5 px-2.5 rounded-lg bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-white font-extrabold text-[11px] transition flex items-center justify-center gap-1.5 shadow">
+                  <i class="fa-solid fa-scissors"></i>
+                  <span>Realisasi Separuh (Jual 50% di TP1 & Auto-BEP)</span>
+                </button>
+              </div>
+            ` : ''}
           </div>
         ` : ''}
 
@@ -4020,12 +4271,16 @@ function renderJournalView() {
         ` : ''}
 
         <!-- ACTIONS ROW -->
-        <div class="flex items-center justify-between pt-1 border-t border-gray-800/80 text-xs">
-          <div>
+        <div class="flex items-center justify-between pt-1 border-t border-gray-800/80 text-xs flex-wrap gap-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
             ${!isClosed ? `
               <button onclick="openTradeExitModal('${t.id}')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow">
                 <i class="fa-solid fa-hand-holding-dollar"></i>
-                <span>Tutup / Jual Posisi</span>
+                <span>Tutup Posisi</span>
+              </button>
+              <button onclick="openScalingOutModal('${t.id}')" class="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs border border-amber-500/30 transition flex items-center gap-1.5" title="Realisasikan sebagian lot dan pasang BEP">
+                <i class="fa-solid fa-scissors text-amber-400"></i>
+                <span>Jual Sebagian</span>
               </button>
             ` : `
               <button onclick="reopenTrade('${t.id}')" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 transition flex items-center gap-1">
